@@ -100,6 +100,10 @@ export interface BarkTextureOptions {
 
 /**
  * Draw bark/wood texture
+ * 
+ * PERFORMANCE NOTE: Large textures (e.g., full-screen on 4K displays) can exceed
+ * browser memory limits. This function automatically caps dimensions to prevent
+ * allocation failures. For very large surfaces, consider tiled rendering.
  */
 export function drawBarkTexture(
   ctx: CanvasRenderingContext2D,
@@ -114,19 +118,75 @@ export function drawBarkTexture(
     seed = 0,
   } = options;
   
+  // Safety limit: prevent memory allocation failures
+  // Max 1920x1080 = ~8MB buffer (safe for most browsers)
+  const MAX_WIDTH = 1920;
+  const MAX_HEIGHT = 1080;
+  const MAX_PIXELS = MAX_WIDTH * MAX_HEIGHT;
+  
+  const actualWidth = Math.min(width, MAX_WIDTH);
+  const actualHeight = Math.min(height, MAX_HEIGHT);
+  const actualPixels = actualWidth * actualHeight;
+  
+  // If dimensions exceed limits, warn and use reduced size
+  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+    console.warn(
+      `drawBarkTexture: Dimensions ${width}x${height} exceed safe limit (${MAX_WIDTH}x${MAX_HEIGHT}). ` +
+      `Using reduced size ${actualWidth}x${actualHeight} to prevent memory allocation failure.`
+    );
+  }
+  
+  // Additional safety check: ensure we don't exceed reasonable pixel count
+  if (actualPixels > MAX_PIXELS) {
+    const scale = Math.sqrt(MAX_PIXELS / actualPixels);
+    const scaledWidth = Math.floor(actualWidth * scale);
+    const scaledHeight = Math.floor(actualHeight * scale);
+    console.warn(
+      `drawBarkTexture: Pixel count ${actualPixels} exceeds limit ${MAX_PIXELS}. ` +
+      `Scaling to ${scaledWidth}x${scaledHeight}.`
+    );
+    // Recursively call with safe dimensions
+    return drawBarkTexture(ctx, {
+      ...options,
+      width: scaledWidth,
+      height: scaledHeight,
+    });
+  }
+  
   const perm = createPermutation(seed);
   const scale = 0.02; // Texture scale
   const roughnessScale = roughness * 0.1;
   
-  // Create image data for pixel manipulation
-  const imageData = ctx.createImageData(width, height);
+  // Create image data for pixel manipulation with error handling
+  let imageData: ImageData;
+  try {
+    imageData = ctx.createImageData(actualWidth, actualHeight);
+  } catch (error) {
+    if (error instanceof RangeError || error instanceof DOMException) {
+      // Fallback: try smaller size
+      const fallbackWidth = Math.floor(actualWidth * 0.5);
+      const fallbackHeight = Math.floor(actualHeight * 0.5);
+      console.error(
+        `drawBarkTexture: Failed to allocate ${actualWidth}x${actualHeight} buffer. ` +
+        `Falling back to ${fallbackWidth}x${fallbackHeight}.`,
+        error
+      );
+      return drawBarkTexture(ctx, {
+        ...options,
+        width: fallbackWidth,
+        height: fallbackHeight,
+      });
+    }
+    throw error; // Re-throw if it's not a memory error
+  }
+  
   const data = imageData.data;
   
   const baseColor = hexToRgb(color);
   
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
+  for (let y = 0; y < actualHeight; y++) {
+    for (let x = 0; x < actualWidth; x++) {
+      const idx = (y * actualWidth + x) * 4;
       
       // Grain pattern (stronger in grain direction)
       let grain = 0;
@@ -154,7 +214,18 @@ export function drawBarkTexture(
     }
   }
   
-  ctx.putImageData(imageData, 0, 0);
+  // Only put imageData if dimensions match (otherwise it was scaled down)
+  if (actualWidth === width && actualHeight === height) {
+    ctx.putImageData(imageData, 0, 0);
+  } else {
+    // If scaled down, draw to a temporary canvas and scale it up
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = actualWidth;
+    tempCanvas.height = actualHeight;
+    const tempCtx = tempCanvas.getContext('2d')!;
+    tempCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(tempCanvas, 0, 0, width, height);
+  }
 }
 
 /**
