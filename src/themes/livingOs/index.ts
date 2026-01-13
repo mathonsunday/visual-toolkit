@@ -36,6 +36,7 @@ export {
   rgbToHex,
   rgbToRgba,
   getGrowthColor,
+  addAlphaToColor,
 } from './colors.js';
 
 export {

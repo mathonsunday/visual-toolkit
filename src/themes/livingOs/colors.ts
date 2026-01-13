@@ -94,3 +94,43 @@ export function getGrowthColor(growthLevel: number): { r: number; g: number; b: 
     };
   }
 }
+
+/**
+ * Add alpha transparency to any color format (hex, rgb, rgba)
+ * Returns rgba() string with the specified alpha value
+ */
+export function addAlphaToColor(color: string, alpha: number): string {
+  // Clamp alpha to 0-1
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  
+  // If already rgba, replace alpha
+  const rgbaMatch = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)/i);
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${clampedAlpha})`;
+  }
+  
+  // If hex, convert to rgba
+  const hexMatch = color.match(/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})/);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    let r: number, g: number, b: number;
+    
+    if (hex.length === 3) {
+      // Short hex (#RGB)
+      r = parseInt(hex[0] + hex[0], 16);
+      g = parseInt(hex[1] + hex[1], 16);
+      b = parseInt(hex[2] + hex[2], 16);
+    } else {
+      // Full hex (#RRGGBB)
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    }
+    
+    return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
+  }
+  
+  // Fallback: return original color if we can't parse it
+  console.warn(`Could not parse color format: "${color}". Returning as-is.`);
+  return color;
+}

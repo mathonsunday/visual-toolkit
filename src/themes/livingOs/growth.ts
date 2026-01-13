@@ -5,6 +5,8 @@
  * All patterns use Bezier curves and organic branching for natural feel.
  */
 
+import { addAlphaToColor } from './colors.js';
+
 export interface GrowthOptions {
   origin: { x: number; y: number };
   direction?: 'down' | 'left' | 'right' | 'up';
@@ -78,7 +80,9 @@ export function drawGrowingRoots(
   // Tapering: thicker at base, thinner at tip
   const gradient = ctx.createLinearGradient(origin.x, origin.y, endX, endY);
   gradient.addColorStop(0, color);
-  gradient.addColorStop(1, color + '00'); // Fade to transparent
+  // Use proper rgba format for transparency (works with hex, rgb, rgba)
+  const transparentColor = addAlphaToColor(color, 0);
+  gradient.addColorStop(1, transparentColor);
   
   ctx.strokeStyle = gradient;
   ctx.lineWidth = thickness * (1 - length * 0.3); // Taper
@@ -136,29 +140,54 @@ export function drawVines(
   ctx.lineWidth = thickness;
   
   if (path && path.length > 1) {
-    // Use provided path
-    ctx.beginPath();
-    ctx.moveTo(path[0].x, path[0].y);
+    // Validate and filter path: ensure all elements are valid objects with x and y
+    const validPath = path.filter(
+      (p): p is { x: number; y: number } =>
+        p != null &&
+        typeof p === 'object' &&
+        typeof (p as any).x === 'number' &&
+        typeof (p as any).y === 'number' &&
+        !isNaN((p as any).x) &&
+        !isNaN((p as any).y)
+    );
     
-    for (let i = 1; i < path.length; i++) {
-      const p1 = path[i - 1];
-      const p2 = path[i];
+    // If we don't have enough valid points, fall back to generated path
+    if (validPath.length < 2) {
+      console.warn(
+        `drawVines: Path array has insufficient valid points (${validPath.length} valid out of ${path.length} total). ` +
+        `Falling back to generated path.`
+      );
+      // Fall through to generated path code below
+    } else {
+      // Use provided path
+      ctx.beginPath();
+      ctx.moveTo(validPath[0].x, validPath[0].y);
       
-      // Use Bezier curves between points for smooth, organic feel
-      if (i < path.length - 1) {
-        const p3 = path[i + 1];
-        const cp1x = p1.x + (p2.x - p1.x) * 0.5;
-        const cp1y = p1.y + (p2.y - p1.y) * 0.5;
-        const cp2x = p2.x + (p3.x - p2.x) * 0.3;
-        const cp2y = p2.y + (p3.y - p2.y) * 0.3;
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-      } else {
-        ctx.lineTo(p2.x, p2.y);
+      for (let i = 1; i < validPath.length; i++) {
+        const p1 = validPath[i - 1];
+        const p2 = validPath[i];
+        
+        // Use Bezier curves between points for smooth, organic feel
+        if (i < validPath.length - 1) {
+          const p3 = validPath[i + 1]; // Guaranteed to exist since i < length - 1
+          const cp1x = p1.x + (p2.x - p1.x) * 0.5;
+          const cp1y = p1.y + (p2.y - p1.y) * 0.5;
+          const cp2x = p2.x + (p3.x - p2.x) * 0.3;
+          const cp2y = p2.y + (p3.y - p2.y) * 0.3;
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        } else {
+          ctx.lineTo(p2.x, p2.y);
+        }
       }
+      
+      ctx.stroke();
+      ctx.restore();
+      return; // Early return after drawing valid path
     }
-    
-    ctx.stroke();
-  } else {
+  }
+  
+  // Generate simple vine path (fallback or when no path provided)
+  {
     // Generate simple vine path
     const segments = Math.floor(length * 20);
     ctx.beginPath();
