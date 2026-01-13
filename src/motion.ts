@@ -145,25 +145,54 @@ export function createTendril(
   };
 }
 
+export interface TendrilUpdateOptions {
+  /** Maximum reach as ratio of distance to target (default: 0.5) 
+   *  CRITICAL: Keep this at 0.5 or below to prevent disembodied look */
+  maxReachRatio?: number;
+  
+  /** Absolute maximum reach in pixels (default: 250) */
+  maxReachPixels?: number;
+  
+  /** Reduce reach when light moves fast (default: 1) */
+  recoilFactor?: number;
+}
+
 /**
  * Update tendril segments - follow-the-leader with organic waviness
- * The key insight: each segment follows the previous one with LAG
+ * 
+ * IMPORTANT: maxReachRatio is capped to prevent "disembodied arm" look.
+ * Tendrils must stay visually connected to their origin mass.
  */
 export function updateTendril(
   tendril: Tendril,
   targetX: number,
   targetY: number,
   time: number,
-  recoilFactor = 1 // reduce when light moves fast
+  optionsOrRecoil: TendrilUpdateOptions | number = {}
 ): void {
+  // Handle legacy signature (recoilFactor as number)
+  const options: TendrilUpdateOptions = typeof optionsOrRecoil === 'number' 
+    ? { recoilFactor: optionsOrRecoil }
+    : optionsOrRecoil;
+  
+  const {
+    maxReachRatio = 0.5,  // NEVER more than 50% toward target by default
+    maxReachPixels = 250,
+    recoilFactor = 1,
+  } = options;
+
   const dx = targetX - tendril.startX;
   const dy = targetY - tendril.startY;
   const dist = Math.sqrt(dx * dx + dy * dy);
   
   if (dist === 0) return;
   
-  // Calculate how far to reach (capped, reduced by recoil)
-  const maxReach = Math.min(dist * 0.7, 300) * recoilFactor;
+  // CRITICAL: Double-cap the reach to prevent disembodied look
+  // 1. Never more than maxReachRatio of the distance
+  // 2. Never more than maxReachPixels absolute
+  const ratioReach = dist * Math.min(maxReachRatio, 0.6); // Hard cap at 60%
+  const maxReach = Math.min(ratioReach, maxReachPixels) * recoilFactor;
+  
   tendril.targetX = tendril.startX + (dx / dist) * maxReach;
   tendril.targetY = tendril.startY + (dy / dist) * maxReach;
   
@@ -251,6 +280,18 @@ export interface TendrilDrawOptions {
   
   /** Whether to draw in "lit" mode - brighter when light is nearby */
   illumination?: number;
+  
+  // === BASE MASS OPTIONS (prevents disembodied look) ===
+  
+  /** Draw a dark mass blob at the origin to show what the tendril is attached to (default: false) */
+  drawBaseMass?: boolean;
+  
+  /** Radius of the base mass blob (default: tendril.thickness * 8) */
+  baseMassRadius?: number;
+  
+  /** How much of the base mass is visible (0 = off-screen, 1 = fully visible) 
+   *  Affects how prominent the mass rendering is */
+  baseMassVisibility?: number;
 }
 
 /**
@@ -259,15 +300,18 @@ export interface TendrilDrawOptions {
  * - Tapering from base to tip
  * - Multi-layer rendering (shadow → body → highlight)
  * - Flesh-like gradient coloring
+ * - Optional base mass to prevent "disembodied arm" look
  * 
  * @example
- * // Update physics
- * updateTendril(tendril, mouseX, mouseY, frameCount, recoilFactor);
+ * // Update physics (note maxReachRatio to keep attached)
+ * updateTendril(tendril, mouseX, mouseY, frameCount, { maxReachRatio: 0.5 });
  * 
- * // Draw with organic rendering
+ * // Draw with organic rendering + base mass
  * drawTendril(ctx, tendril, {
  *   palette: 'flesh',
- *   illumination: calculateIllumination(lightX, lightY, tendril.startX, tendril.startY, 200),
+ *   drawBaseMass: true,      // Shows what it's attached to
+ *   baseMassRadius: 80,
+ *   illumination: 0.5,
  *   time: frameCount,
  * });
  */
@@ -282,6 +326,9 @@ export function drawTendril(
     waviness = 0,
     time = 0,
     illumination = 0,
+    drawBaseMass = false,
+    baseMassRadius,
+    baseMassVisibility = 0.5,
   } = options;
 
   const colors = typeof palette === 'string' ? tendrilPalettes[palette] : palette;
@@ -290,8 +337,13 @@ export function drawTendril(
   const segments = tendril.segments;
   if (segments.length < 2) return;
 
+  // Draw base mass FIRST (behind tendril)
+  if (drawBaseMass) {
+    const massRadius = baseMassRadius ?? tendril.thickness * 8;
+    drawTendrilBaseMass(ctx, tendril.startX, tendril.startY, massRadius, colors, illumination, baseMassVisibility);
+  }
+
   // Build the path with bezier curves
-  // First, we need the full path to create offset versions
   const points = buildTendrilPath(tendril, time, waviness);
   if (points.length < 2) return;
 
@@ -325,6 +377,84 @@ export function drawTendril(
   if (illumination > 0.3) {
     const specular = { r: colors.highlight.r + 40, g: colors.highlight.g + 35, b: colors.highlight.b + 30 };
     drawTendrilLayer(ctx, points, thicknesses, specular, -1.5, 0.15, (illumination - 0.3) * 0.6);
+  }
+}
+
+/**
+ * Draw the dark mass blob at the tendril's origin point.
+ * This shows what the tendril is attached to, preventing the "floating arm" look.
+ */
+function drawTendrilBaseMass(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  colors: TendrilPalette,
+  illumination: number,
+  visibility: number
+): void {
+  // Multiple overlapping gradients for organic mass appearance
+  // The mass should look like it continues beyond the edge
+  
+  const layers = [
+    { radiusScale: 1.5, alpha: 0.3 * visibility },   // Outer soft fade
+    { radiusScale: 1.0, alpha: 0.6 * visibility },   // Main mass
+    { radiusScale: 0.6, alpha: 0.8 * visibility },   // Dense core
+  ];
+  
+  for (const layer of layers) {
+    const r = radius * layer.radiusScale;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    
+    // Base to shadow gradient
+    const baseColor = `rgba(${colors.shadow.r}, ${colors.shadow.g}, ${colors.shadow.b}, ${layer.alpha})`;
+    const edgeColor = `rgba(${colors.shadow.r}, ${colors.shadow.g}, ${colors.shadow.b}, 0)`;
+    
+    grad.addColorStop(0, baseColor);
+    grad.addColorStop(0.6, baseColor);
+    grad.addColorStop(1, edgeColor);
+    
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Add subtle vein-like details radiating from center
+  if (visibility > 0.3) {
+    const veinCount = 5;
+    for (let i = 0; i < veinCount; i++) {
+      const angle = (i / veinCount) * Math.PI * 2 + Math.sin(x * 0.01 + i) * 0.3;
+      const length = radius * (0.6 + Math.sin(y * 0.01 + i * 2) * 0.2);
+      
+      ctx.strokeStyle = `rgba(${colors.base.r + 10}, ${colors.base.g}, ${colors.base.b}, ${0.15 * visibility})`;
+      ctx.lineWidth = 2 + Math.sin(i) * 1;
+      ctx.lineCap = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      
+      // Slight curve
+      const midX = x + Math.cos(angle) * length * 0.5 + Math.sin(angle + i) * 5;
+      const midY = y + Math.sin(angle) * length * 0.5 + Math.cos(angle + i) * 5;
+      const endX = x + Math.cos(angle) * length;
+      const endY = y + Math.sin(angle) * length;
+      
+      ctx.quadraticCurveTo(midX, midY, endX, endY);
+      ctx.stroke();
+    }
+  }
+  
+  // Light response - subtle glow when illuminated
+  if (illumination > 0.2) {
+    const glowGrad = ctx.createRadialGradient(x, y, 0, x, y, radius * 0.8);
+    glowGrad.addColorStop(0, `rgba(${colors.mid.r + 20}, ${colors.mid.g + 15}, ${colors.mid.b + 10}, ${illumination * 0.15 * visibility})`);
+    glowGrad.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -431,6 +561,17 @@ function drawTendrilLayer(
 
 /**
  * Draw multiple tendrils with proper layering (far ones first)
+ * 
+ * @example
+ * drawTendrils(ctx, tendrilArray, {
+ *   palette: 'flesh',
+ *   drawBaseMass: true,     // Show what they're attached to
+ *   baseMassRadius: 80,
+ *   lightX: mouseX,
+ *   lightY: mouseY,
+ *   lightRadius: 200,
+ *   time: frameCount,
+ * });
  */
 export function drawTendrils(
   ctx: CanvasRenderingContext2D,
@@ -464,6 +605,68 @@ export function drawTendrils(
     
     drawTendril(ctx, tendril, { ...drawOptions, illumination });
   }
+}
+
+/**
+ * Create tendrils spawned from edges of the canvas.
+ * Origins are placed AT or BEYOND the edge to prevent disembodied look.
+ * 
+ * @example
+ * const tendrils = createEdgeTendrils(12, canvas.width, canvas.height, {
+ *   edges: ['left', 'right', 'bottom'],  // Which edges to spawn from
+ *   thickness: [4, 8],                    // Random thickness range
+ *   segments: 12,
+ * });
+ */
+export function createEdgeTendrils(
+  count: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  options: {
+    edges?: Array<'top' | 'bottom' | 'left' | 'right'>;
+    thickness?: [number, number];
+    segments?: number;
+    /** How far beyond the edge to place origins (default: 30) */
+    edgeOffset?: number;
+  } = {}
+): Tendril[] {
+  const {
+    edges = ['left', 'right', 'bottom'],
+    thickness = [4, 8],
+    segments = 12,
+    edgeOffset = 30,
+  } = options;
+
+  const tendrils: Tendril[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const edge = edges[i % edges.length];
+    let startX: number, startY: number;
+    
+    switch (edge) {
+      case 'top':
+        startX = Math.random() * canvasWidth;
+        startY = -edgeOffset - Math.random() * 20;
+        break;
+      case 'bottom':
+        startX = Math.random() * canvasWidth;
+        startY = canvasHeight + edgeOffset + Math.random() * 20;
+        break;
+      case 'left':
+        startX = -edgeOffset - Math.random() * 20;
+        startY = Math.random() * canvasHeight;
+        break;
+      case 'right':
+        startX = canvasWidth + edgeOffset + Math.random() * 20;
+        startY = Math.random() * canvasHeight;
+        break;
+    }
+    
+    const t = thickness[0] + Math.random() * (thickness[1] - thickness[0]);
+    tendrils.push(createTendril(startX, startY, segments, t));
+  }
+  
+  return tendrils;
 }
 
 // ============================================

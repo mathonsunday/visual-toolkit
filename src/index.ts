@@ -26,6 +26,7 @@ export {
   waver,
   // Tendrils
   createTendril,
+  createEdgeTendrils,
   updateTendril,
   drawTendril,
   drawTendrils,
@@ -48,6 +49,7 @@ export {
   type TendrilPalette,
   type TendrilPaletteType,
   type TendrilDrawOptions,
+  type TendrilUpdateOptions,
   type Seeker,
   type SwarmOptions,
 } from './motion.js';

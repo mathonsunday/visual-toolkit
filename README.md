@@ -590,27 +590,50 @@ Eyes automatically:
 
 Organic tendrils that reach toward light with proper bezier curves, tapering, and multi-layer flesh rendering.
 
-### Create & Update
+### CRITICAL: Tendrils Are Appendages
+
+A tendril must be **attached to something**. If it just floats in the middle of the screen, it looks like a disembodied worm.
+
+**Rules:**
+1. Origins should be **at or beyond the edge** of the canvas
+2. **maxReachRatio** should be ≤0.5 (tendrils never reach more than 50% toward target)
+3. Use **drawBaseMass** to show what the tendril is attached to
+
+### Create from Edges
 
 ```typescript
-import { createTendril, updateTendril, drawTendril } from 'visual-toolkit';
+import { createEdgeTendrils, updateTendril, drawTendrils } from 'visual-toolkit';
 
-// Create from wall edge
-const tendril = createTendril(0, 300, 12, 6); // x, y, segments, thickness
-
-// In update loop - physics
-updateTendril(tendril, mouseX, mouseY, frameCount, recoilFactor);
+// Spawn from edges (origins are off-screen)
+const tendrils = createEdgeTendrils(12, canvas.width, canvas.height, {
+  edges: ['left', 'right', 'bottom'],  // Which edges
+  thickness: [4, 8],                    // Random range
+  segments: 12,
+});
 ```
 
-### Draw with Organic Rendering
+### Update with Reach Limits
+
+```typescript
+// CRITICAL: maxReachRatio prevents disembodied look
+updateTendril(tendril, mouseX, mouseY, frameCount, {
+  maxReachRatio: 0.5,     // Never extend more than 50% toward target
+  maxReachPixels: 250,    // Absolute limit
+  recoilFactor: 0.8,      // Reduce when light moves fast
+});
+```
+
+### Draw with Base Mass
 
 ```typescript
 drawTendril(ctx, tendril, {
   palette: 'flesh',       // 'flesh' | 'abyssal' | 'biolum' | 'dark'
+  drawBaseMass: true,     // Shows what it's attached to!
+  baseMassRadius: 80,     // Size of the dark blob at origin
   taperRatio: 0.15,       // How thin the tip is vs base
   waviness: 3,            // Extra organic waviness
   illumination: 0.5,      // 0-1, brightens when lit
-  time: frameCount,       // For organic variation
+  time: frameCount,
 });
 ```
 
