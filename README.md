@@ -1,6 +1,9 @@
 # Visual Toolkit
 
-A library encoding premium deep-sea visual aesthetics. Extracted from working code that "feels right."
+A library encoding premium visual aesthetics with theme support. Extracted from working code that "feels right."
+
+**Built-in Theme**: Deep-sea marine biology (`themes.deepSea`)  
+**Extensible**: Register custom themes for jungle, space, or any aesthetic.
 
 ## Installation
 
@@ -22,6 +25,30 @@ Include the browser bundle directly:
   const { drawROV, drawJellyfish, timing, deepSea } = VisualToolkit;
 </script>
 ```
+
+---
+
+## Architecture: Core + Themes
+
+The library is organized into **core API** (theme-agnostic) and **themes** (presets):
+
+```typescript
+// Core API - works for any theme
+import { timing, drift, material3D } from 'visual-toolkit';
+
+// Theme presets - deep-sea specific
+import { themes } from 'visual-toolkit';
+themes.deepSea.colors.background
+themes.deepSea.particles.marineSnow(100)
+themes.deepSea.recipes.drawROV(ctx, x, y)
+```
+
+**Backward Compatibility**: The old API still works:
+```typescript
+import { deepSea, drawROV } from 'visual-toolkit'; // Still works!
+```
+
+See [THEME_ARCHITECTURE.md](./THEME_ARCHITECTURE.md) for details.
 
 ---
 
@@ -116,9 +143,52 @@ element.style.boxShadow = cssJellyfishGlow();
 
 ---
 
+## Themes
+
+The library supports multiple themes. The **deep-sea theme** is built-in and auto-registered.
+
+### Using Built-in Themes
+
+```typescript
+import { themes } from 'visual-toolkit';
+
+// Deep-sea theme (built-in)
+themes.deepSea.colors.background
+themes.deepSea.colors.bioluminescence
+themes.deepSea.particles.marineSnow(100)
+themes.deepSea.recipes.drawROV(ctx, x, y)
+themes.deepSea.gradients.deepWaterBackground(ctx, height)
+```
+
+### Registering Custom Themes
+
+```typescript
+import { registerTheme } from 'visual-toolkit';
+
+registerTheme('jungle', {
+  colors: {
+    canopy: { light: '#2d5016', mid: '#1a3009', dark: '#0f1a05' },
+  },
+  particles: {
+    rain: (count) => createRainParticles(count),
+  },
+  recipes: {
+    drawTree: (ctx, x, y) => { /* ... */ },
+  },
+});
+
+// Now available
+themes.jungle.colors.canopy
+themes.jungle.particles.rain(50)
+```
+
+See [THEME_ARCHITECTURE.md](./THEME_ARCHITECTURE.md) for complete theme system documentation.
+
+---
+
 ## Color Palettes
 
-### Deep Sea
+### Deep Sea Theme
 
 Not "dark blue" - specific colors that feel like depth:
 

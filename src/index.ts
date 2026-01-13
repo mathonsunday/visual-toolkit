@@ -1,20 +1,17 @@
 /**
  * VISUAL TOOLKIT
  * 
- * A library encoding premium deep-sea visual aesthetics.
- * See README.md for design principles.
+ * A library encoding premium visual aesthetics with theme support.
+ * 
+ * Core API: Theme-agnostic functions (motion, materials, lighting)
+ * Themes: Theme-specific presets (deepSea, custom themes)
+ * 
+ * See README.md for design principles and THEME_ARCHITECTURE.md for theme system.
  */
 
-// Colors & Palettes
-export {
-  deepSea,
-  bioluminescence,
-  materials,
-  darkness,
-  hexToRgb,
-  randomBioHue,
-  bioGlow,
-} from './colors.js';
+// ============================================
+// CORE API (Theme-Agnostic)
+// ============================================
 
 // Motion & Animation
 export {
@@ -39,23 +36,14 @@ export {
   // Types
   type Seeker,
   type SwarmOptions,
-} from './motion.js';
+} from './core/motion.js';
 
-// Gradients
+// Core Gradients (Generic)
 export {
-  deepWaterBackground,
   material3D,
   radialGlow,
-  playerLight,
-  lightBeam,
   vignette,
-  eyeGlow,
-  cssDeepWater,
-  cssBioGlow,
-  cssCreatureBody,
-  cssJellyfishBell,
-  cssDistantCreature,
-} from './gradients.js';
+} from './core/gradients.js';
 
 // Shadows & Depth
 export {
@@ -71,23 +59,7 @@ export {
   depthPresets,
   drawWithDepth,
   type DepthConfig,
-} from './shadows.js';
-
-// Particles
-export {
-  createMarineSnow,
-  updateMarineSnow,
-  drawMarineSnow,
-  createDeepParticles,
-  updateDeepParticles,
-  cssMarineSnowParticle,
-  htmlMarineSnow,
-  cssMarineSnowStyles,
-  createBioParticles,
-  drawBioParticles,
-  type Particle,
-  type BioParticle,
-} from './particles.js';
+} from './core/shadows.js';
 
 // Shapes & Details
 export {
@@ -100,19 +72,7 @@ export {
   drawLight,
   drawTrackingEye,
   drawTentacle,
-} from './shapes.js';
-
-// Recipes (complete drawable objects)
-export {
-  drawROV,
-  drawLightCone,
-  drawJellyfish,
-  drawSpecimen,
-  type ROVOptions,
-  type LightConeOptions,
-  type JellyfishOptions,
-  type SpecimenOptions,
-} from './recipes.js';
+} from './core/shapes.js';
 
 // Lighting helpers
 export {
@@ -121,7 +81,7 @@ export {
   drawPlayerLight,
   drawOrganicTexture,
   drawCaustics,
-} from './lighting.js';
+} from './core/lighting.js';
 
 // Eye system
 export {
@@ -133,10 +93,72 @@ export {
   drawEyes,
   type Eye,
   type EyeOptions,
-} from './eyes.js';
+} from './core/eyes.js';
 
-// Organic surfaces
+// Helpers
 export {
+  hexToRgb,
+} from './core/helpers.js';
+
+// ============================================
+// THEME SYSTEM
+// ============================================
+
+export {
+  registerTheme,
+  getTheme,
+  getThemeNames,
+  themes,
+  type Theme,
+} from './themes/index.js';
+
+// Import deep-sea theme to auto-register it
+import './themes/deepSea/index.js';
+
+// ============================================
+// BACKWARD COMPATIBILITY
+// ============================================
+// Re-export deep-sea theme items for backward compatibility
+// These will be deprecated in a future version
+
+export {
+  // Colors
+  deepSea,
+  bioluminescence,
+  materials,
+  darkness,
+  randomBioHue,
+  bioGlow,
+  // Gradients
+  deepWaterBackground,
+  playerLight,
+  lightBeam,
+  eyeGlow,
+  cssDeepWater,
+  cssBioGlow,
+  cssCreatureBody,
+  cssJellyfishBell,
+  cssDistantCreature,
+  // Particles
+  createMarineSnow,
+  updateMarineSnow,
+  drawMarineSnow,
+  createDeepParticles,
+  updateDeepParticles,
+  createBioParticles,
+  drawBioParticles,
+  type Particle,
+  type BioParticle,
+  // Recipes
+  drawROV,
+  drawLightCone,
+  drawJellyfish,
+  drawSpecimen,
+  type ROVOptions,
+  type LightConeOptions,
+  type JellyfishOptions,
+  type SpecimenOptions,
+  // Surfaces
   drawOrganicSurface,
   drawBarnacles,
   drawScarring,
@@ -145,4 +167,4 @@ export {
   type SurfacePalette,
   type SurfacePreset,
   type OrganicSurfaceOptions,
-} from './surfaces.js';
+} from './themes/deepSea/index.js';
