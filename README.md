@@ -2,6 +2,29 @@
 
 A library encoding premium deep-sea visual aesthetics. Extracted from working code that "feels right."
 
+## Installation
+
+### With a build system (TypeScript/ES modules)
+
+```bash
+npm install visual-toolkit
+# or copy the src/ folder into your project
+```
+
+### Without a build system (plain JS)
+
+Include the browser bundle directly:
+
+```html
+<script src="dist/visual-toolkit.min.js"></script>
+<script>
+  // Everything is available on window.VisualToolkit
+  const { drawROV, drawJellyfish, timing, deepSea } = VisualToolkit;
+</script>
+```
+
+---
+
 ## Why This Exists
 
 LLMs generate generic visuals. They default to:
@@ -335,6 +358,112 @@ function render() {
 }
 
 render();
+```
+
+---
+
+## Recipes (Complete Objects)
+
+High-level functions that draw complete objects, combining all the primitives.
+
+### ROV (Underwater Vehicle)
+
+```typescript
+import { drawROV } from 'visual-toolkit';
+
+function render() {
+  drawROV(ctx, canvas.width / 2, canvas.height * 0.4, 1.2, {
+    lightsOn: true,
+    showTether: true,
+    showArm: true,
+    time: frameCount,
+    rotation: Math.sin(frameCount * 0.0008) * 0.03,
+  });
+}
+```
+
+### Light Cone
+
+```typescript
+import { drawLightCone } from 'visual-toolkit';
+
+// Draw cone of light from ROV pointing down
+drawLightCone(ctx, rovX, rovY + 50, Math.PI / 2, 300, {
+  spread: 0.6,        // radians
+  startOpacity: 0.2,
+  color: { r: 255, g: 250, b: 230 },
+});
+```
+
+### Jellyfish
+
+```typescript
+import { drawJellyfish } from 'visual-toolkit';
+
+drawJellyfish(ctx, 200, 150, {
+  bellWidth: 60,
+  tentacleCount: 4,
+  time: frameCount,
+  glowIntensity: 0.5,
+});
+```
+
+### Specimen (Mysterious Creature)
+
+```typescript
+import { drawSpecimen } from 'visual-toolkit';
+
+// Reveals more details when illuminated
+drawSpecimen(ctx, 300, 200, {
+  width: 70,
+  time: frameCount,
+  illumination: 0.5,  // 0-1, how much light is on it
+  lookAt: { x: mouseX, y: mouseY },  // eye tracking
+});
+```
+
+---
+
+## Browser Bundle (No Build System)
+
+For projects without TypeScript/bundlers, use the pre-built browser bundle:
+
+```html
+<script src="path/to/visual-toolkit.min.js"></script>
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let time = 0;
+
+  function render() {
+    // Clear with deep water gradient
+    ctx.fillStyle = VisualToolkit.deepWaterBackground(ctx, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw ROV
+    VisualToolkit.drawROV(ctx, canvas.width / 2, 150, 1, {
+      lightsOn: true,
+      time: time,
+    });
+
+    // Draw light beams
+    VisualToolkit.drawLightCone(ctx, canvas.width / 2, 200, Math.PI / 2, 250);
+
+    // Draw creatures
+    VisualToolkit.drawJellyfish(ctx, 100, 300, { time: time });
+    VisualToolkit.drawSpecimen(ctx, 400, 280, { time: time, illumination: 0.3 });
+
+    // Vignette
+    ctx.fillStyle = VisualToolkit.vignette(ctx, canvas.width/2, canvas.height/2, 
+      canvas.height * 0.3, canvas.height * 0.8);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    time += 16;
+    requestAnimationFrame(render);
+  }
+
+  render();
+</script>
 ```
 
 ---

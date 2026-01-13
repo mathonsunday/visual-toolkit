@@ -95,3 +95,15 @@ export {
   drawTrackingEye,
   drawTentacle,
 } from './shapes.js';
+
+// Recipes (complete drawable objects)
+export {
+  drawROV,
+  drawLightCone,
+  drawJellyfish,
+  drawSpecimen,
+  type ROVOptions,
+  type LightConeOptions,
+  type JellyfishOptions,
+  type SpecimenOptions,
+} from './recipes.js';

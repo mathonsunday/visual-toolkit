@@ -60,7 +60,7 @@ export const amplitude = {
  * Organic drift - combines two sine waves for non-mechanical movement
  * Use for: ROV sway, creature floating, camera shake
  */
-export function drift(time: number, primary = timing.verySlow, secondary = timing.slow): {
+export function drift(time: number, primary: number = timing.verySlow, secondary: number = timing.slow): {
   x: number;
   y: number;
   rotation: number;
@@ -76,7 +76,7 @@ export function drift(time: number, primary = timing.verySlow, secondary = timin
  * Bob motion - vertical oscillation for floating objects
  * Use for: Jellyfish, floating particles, suspended objects
  */
-export function bob(time: number, speed = timing.slow, height = 0.02): number {
+export function bob(time: number, speed: number = timing.slow, height: number = 0.02): number {
   return Math.sin(time * speed) * height;
 }
 
@@ -84,7 +84,7 @@ export function bob(time: number, speed = timing.slow, height = 0.02): number {
  * Pulse - rhythmic scaling for glows and organs
  * Use for: Bioluminescent glow, heartbeat, breathing
  */
-export function pulse(time: number, speed = timing.medium, min = 0.8, max = 1.2): number {
+export function pulse(time: number, speed: number = timing.medium, min: number = 0.8, max: number = 1.2): number {
   const t = (Math.sin(time * speed) + 1) / 2; // normalize to 0-1
   return min + t * (max - min);
 }
@@ -93,7 +93,7 @@ export function pulse(time: number, speed = timing.medium, min = 0.8, max = 1.2)
  * Waver - organic waviness for long shapes
  * Use for: Tentacles, tethers, trailing elements
  */
-export function waver(time: number, segmentIndex: number, speed = timing.slow): { x: number; y: number } {
+export function waver(time: number, segmentIndex: number, speed: number = timing.slow): { x: number; y: number } {
   return {
     x: Math.sin(time * speed + segmentIndex * 0.5) * 0.5,
     y: Math.cos(time * speed + segmentIndex * 0.3) * 0.5,
