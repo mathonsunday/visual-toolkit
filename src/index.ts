@@ -28,11 +28,18 @@ export {
   updateTendril,
   createSeeker,
   updateSeeker,
+  createSeekerSwarm,
+  updateSeekerWithDrift,
+  updateSeekerSwarm,
+  drawBiolumGlow,
+  drawSeeker,
+  drawSeekerSwarm,
   cssTimings,
   staggerDelay,
   type Tendril,
   type TendrilSegment,
   type Seeker,
+  type SwarmOptions,
 } from './motion.js';
 
 // Gradients
@@ -137,5 +144,6 @@ export {
   surfacePalettes,
   type SurfaceType,
   type SurfacePalette,
+  type SurfacePreset,
   type OrganicSurfaceOptions,
 } from './surfaces.js';

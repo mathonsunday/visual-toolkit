@@ -163,7 +163,37 @@ export type SurfaceType = keyof typeof surfacePalettes;
 // MAIN SURFACE DRAWING
 // ============================================
 
+/** 
+ * Visibility presets - shortcuts for common use cases.
+ * 
+ * - 'visible': Clear, high-contrast surface (for main features like The Wall)
+ * - 'subtle': Muted background texture (for ambient depth)
+ * - 'dramatic': High vein density, strong light response (for horror scenes)
+ */
+export type SurfacePreset = 'visible' | 'subtle' | 'dramatic';
+
+const surfacePresets: Record<SurfacePreset, Partial<OrganicSurfaceOptions>> = {
+  visible: {
+    noiseScale: 0.003,
+    showVeins: true,
+    veinCount: 6,
+  },
+  subtle: {
+    noiseScale: 0.005,
+    showVeins: true,
+    veinCount: 3,
+  },
+  dramatic: {
+    noiseScale: 0.002,
+    showVeins: true,
+    veinCount: 10,
+  },
+};
+
 export interface OrganicSurfaceOptions {
+  /** Use a preset configuration (overridable by other options) */
+  preset?: SurfacePreset;
+  
   /** Surface type (default: 'fleshy') */
   type?: SurfaceType;
   
@@ -192,13 +222,29 @@ export interface OrganicSurfaceOptions {
  * Draw an organic surface that looks like LIVING TISSUE.
  * Uses noise for mottling, bezier curves for veins, proper depth cues.
  * 
+ * PERFORMANCE NOTE: The per-pixel noise (mottled base) is expensive.
+ * For animated scenes, render the base layer to an offscreen canvas once,
+ * then composite it each frame:
+ * 
  * @example
+ * // Cache the base layer
+ * const offscreen = document.createElement('canvas');
+ * offscreen.width = width; offscreen.height = height;
+ * drawOrganicSurface(offscreen.getContext('2d'), width, height, { 
+ *   type: 'fleshy', time: 0 // static base
+ * });
+ * 
+ * // In render loop
+ * ctx.drawImage(offscreen, 0, 0);
+ * // Then draw dynamic elements (light response, eyes, etc.)
+ * 
+ * @example
+ * // Simple usage with preset
  * drawOrganicSurface(ctx, canvas.width, canvas.height, {
+ *   preset: 'visible',
  *   type: 'fleshy',
- *   showVeins: true,
  *   lightX: mouseX,
  *   lightY: mouseY,
- *   time: frameCount,
  * });
  */
 export function drawOrganicSurface(
@@ -207,17 +253,20 @@ export function drawOrganicSurface(
   height: number,
   options: OrganicSurfaceOptions = {}
 ): void {
+  // Apply preset first, then override with explicit options
+  const presetConfig = options.preset ? surfacePresets[options.preset] : {};
+  
   const {
     type = 'fleshy',
-    noiseScale = 0.003,
-    showVeins = true,
-    veinCount = 6,
+    noiseScale = presetConfig.noiseScale ?? 0.003,
+    showVeins = presetConfig.showVeins ?? true,
+    veinCount = presetConfig.veinCount ?? 6,
     seed = 42,
     time = 0,
     lightX,
     lightY,
     lightRadius = 250,
-  } = options;
+  } = { ...presetConfig, ...options };
 
   const palette = surfacePalettes[type] || surfacePalettes.fleshy;
   const perm = createPermutation(seed);

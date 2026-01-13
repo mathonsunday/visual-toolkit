@@ -586,6 +586,54 @@ Eyes automatically:
 
 ---
 
+## Seeker Swarms
+
+For scenes with many bioluminescent creatures.
+
+### Create with Center Bias
+
+```typescript
+import { createSeekerSwarm, updateSeekerSwarm, drawSeekerSwarm } from 'visual-toolkit';
+
+// Center-biased swarm that won't cluster at edges
+const seekers = createSeekerSwarm(40, canvas.width, canvas.height, {
+  spawnBias: 'center',  // 'uniform' | 'center' | 'edges'
+  sizeRange: [2, 8],
+  speedRange: [1, 4],
+  hueRange: [180, 220],
+});
+```
+
+### Update with Center Drift
+
+```typescript
+// centerDrift prevents edge clustering when wandering
+updateSeekerSwarm(seekers, mouseX, mouseY, mouseSpeed, width, height, 0.02);
+```
+
+### Draw with Proper Layering
+
+```typescript
+// Dim seekers render behind, bright ones in front
+drawSeekerSwarm(ctx, seekers, {
+  lightX: mouseX,
+  lightY: mouseY,
+  lightRadius: 200,
+  time: frameCount,
+});
+```
+
+### Reusable Bioluminescent Glow
+
+```typescript
+import { drawBiolumGlow } from 'visual-toolkit';
+
+// For any glowing point - creatures, particles, etc.
+drawBiolumGlow(ctx, x, y, size, hue, intensity, time);
+```
+
+---
+
 ## Organic Surfaces
 
 Draw surfaces that read as SOLID (flesh, rock, membrane) - not void or holes.
@@ -601,10 +649,8 @@ import { drawOrganicSurface, drawEyes } from 'visual-toolkit';
 
 // Draw the wall FIRST
 drawOrganicSurface(ctx, canvas.width, canvas.height, {
-  type: 'fleshy',        // 'fleshy' | 'rocky' | 'barnacled' | 'membranous'
-  showVeins: true,
-  veinDensity: 0.6,
-  showGrain: true,
+  preset: 'visible',     // 'visible' | 'subtle' | 'dramatic'
+  type: 'fleshy',        // 'fleshy' | 'abyssal' | 'rocky' | 'membranous'
   lightX: mouseX,        // Surface responds to light
   lightY: mouseY,
   lightRadius: 200,
@@ -615,13 +661,43 @@ drawOrganicSurface(ctx, canvas.width, canvas.height, {
 drawEyes(ctx, eyes);
 ```
 
+### Visibility Presets
+
+| Preset | Use Case |
+|--------|----------|
+| `visible` | Main features (The Wall) - clear, high-contrast |
+| `subtle` | Background texture - muted, ambient depth |
+| `dramatic` | Horror scenes - high vein density, strong light response |
+
+### Performance: Caching the Base Layer
+
+The per-pixel noise is expensive. For animated scenes, cache to offscreen canvas:
+
+```typescript
+// Cache once
+const offscreen = document.createElement('canvas');
+offscreen.width = width; offscreen.height = height;
+drawOrganicSurface(offscreen.getContext('2d'), width, height, { 
+  preset: 'visible',
+  type: 'fleshy',
+  time: 0,  // static base
+});
+
+// In render loop - reuse cached base
+ctx.drawImage(offscreen, 0, 0);
+
+// Draw dynamic elements on top
+drawFleshLightResponse(ctx, ...);  // light
+drawEyes(ctx, eyes);               // eyes
+```
+
 ### Surface Types
 
 | Type | Description |
 |------|-------------|
-| `fleshy` | Dark flesh, reddish veins, subsurface scattering |
-| `rocky` | Cave wall, gray-blue tones, subtle grain |
-| `barnacled` | Crusty organic growth, green-brown tones |
+| `fleshy` | Whale/squid flesh, reddish veins, subsurface scattering |
+| `abyssal` | Deep-sea creature, blue-gray with bioluminescent hints |
+| `rocky` | Cave wall, gray-blue tones |
 | `membranous` | Thin tissue, purple tones, visible veins |
 
 ### Additional Surface Elements
