@@ -1,10 +1,106 @@
 /**
- * ORGANIC SURFACES
+ * ORGANIC SURFACES v2
  * 
- * Draw surfaces that read as SOLID (flesh, rock, membrane) not VOID.
- * Key insight: avoid radial gradients which look like holes/sockets.
- * Use directional patterns, veins, and grain instead.
+ * Draw surfaces that look like LIVING TISSUE - whale skin, squid mantle,
+ * deep-sea creature flesh. Not 90s vector graphics.
+ * 
+ * Key techniques:
+ * - Simplex noise for organic variation
+ * - Bezier curves for veins (not straight lines)
+ * - Varied thickness with tapering
+ * - Color mottling, not uniform fills
  */
+
+// ============================================
+// SIMPLEX NOISE (for organic variation)
+// ============================================
+
+// Simplified 2D simplex noise implementation
+const F2 = 0.5 * (Math.sqrt(3) - 1);
+const G2 = (3 - Math.sqrt(3)) / 6;
+
+const grad3 = [
+  [1, 1], [-1, 1], [1, -1], [-1, -1],
+  [1, 0], [-1, 0], [0, 1], [0, -1],
+];
+
+function createPermutation(seed: number): number[] {
+  const perm = Array.from({ length: 256 }, (_, i) => i);
+  // Fisher-Yates shuffle with seed
+  let s = seed;
+  for (let i = 255; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [perm[i], perm[j]] = [perm[j], perm[i]];
+  }
+  return [...perm, ...perm]; // Double it for overflow
+}
+
+function simplex2D(x: number, y: number, perm: number[]): number {
+  const s = (x + y) * F2;
+  const i = Math.floor(x + s);
+  const j = Math.floor(y + s);
+  
+  const t = (i + j) * G2;
+  const X0 = i - t;
+  const Y0 = j - t;
+  const x0 = x - X0;
+  const y0 = y - Y0;
+  
+  const i1 = x0 > y0 ? 1 : 0;
+  const j1 = x0 > y0 ? 0 : 1;
+  
+  const x1 = x0 - i1 + G2;
+  const y1 = y0 - j1 + G2;
+  const x2 = x0 - 1 + 2 * G2;
+  const y2 = y0 - 1 + 2 * G2;
+  
+  const ii = i & 255;
+  const jj = j & 255;
+  
+  const gi0 = perm[ii + perm[jj]] % 8;
+  const gi1 = perm[ii + i1 + perm[jj + j1]] % 8;
+  const gi2 = perm[ii + 1 + perm[jj + 1]] % 8;
+  
+  let n0 = 0, n1 = 0, n2 = 0;
+  
+  let t0 = 0.5 - x0 * x0 - y0 * y0;
+  if (t0 >= 0) {
+    t0 *= t0;
+    n0 = t0 * t0 * (grad3[gi0][0] * x0 + grad3[gi0][1] * y0);
+  }
+  
+  let t1 = 0.5 - x1 * x1 - y1 * y1;
+  if (t1 >= 0) {
+    t1 *= t1;
+    n1 = t1 * t1 * (grad3[gi1][0] * x1 + grad3[gi1][1] * y1);
+  }
+  
+  let t2 = 0.5 - x2 * x2 - y2 * y2;
+  if (t2 >= 0) {
+    t2 *= t2;
+    n2 = t2 * t2 * (grad3[gi2][0] * x2 + grad3[gi2][1] * y2);
+  }
+  
+  return 70 * (n0 + n1 + n2); // Returns -1 to 1
+}
+
+/** Fractal Brownian Motion - layered noise for more organic patterns */
+function fbm(x: number, y: number, perm: number[], octaves: number = 4): number {
+  let value = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+  let maxValue = 0;
+  
+  for (let i = 0; i < octaves; i++) {
+    value += amplitude * simplex2D(x * frequency, y * frequency, perm);
+    maxValue += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
+  }
+  
+  return value / maxValue;
+}
 
 // ============================================
 // SURFACE COLOR PALETTES
@@ -14,60 +110,54 @@ export interface SurfacePalette {
   base: { r: number; g: number; b: number };
   mid: { r: number; g: number; b: number };
   highlight: { r: number; g: number; b: number };
+  shadow: { r: number; g: number; b: number };
   vein: { r: number; g: number; b: number };
   veinHighlight: { r: number; g: number; b: number };
 }
 
 export const surfacePalettes: Record<string, SurfacePalette> = {
-  /** Dark flesh - like creature skin */
+  /** Whale/squid flesh - dark with subtle blue undertones */
   fleshy: {
-    base: { r: 25, g: 18, b: 22 },
-    mid: { r: 35, g: 25, b: 30 },
-    highlight: { r: 55, g: 40, b: 45 },
-    vein: { r: 45, g: 20, b: 25 },
-    veinHighlight: { r: 80, g: 35, b: 40 },
+    base: { r: 28, g: 22, b: 26 },
+    mid: { r: 38, g: 30, b: 35 },
+    highlight: { r: 58, g: 48, b: 52 },
+    shadow: { r: 18, g: 14, b: 18 },
+    vein: { r: 50, g: 28, b: 35 },
+    veinHighlight: { r: 85, g: 50, b: 55 },
   },
   
-  /** Dark rock - like cave wall */
+  /** Deep-sea creature - blue-gray with bioluminescent hints */
+  abyssal: {
+    base: { r: 20, g: 25, b: 32 },
+    mid: { r: 30, g: 38, b: 48 },
+    highlight: { r: 50, g: 62, b: 75 },
+    shadow: { r: 12, g: 15, b: 22 },
+    vein: { r: 35, g: 45, b: 60 },
+    veinHighlight: { r: 60, g: 80, b: 100 },
+  },
+  
+  /** Rocky/barnacled - crusty organic growth */
   rocky: {
-    base: { r: 20, g: 22, b: 25 },
-    mid: { r: 30, g: 33, b: 38 },
-    highlight: { r: 50, g: 55, b: 60 },
-    vein: { r: 25, g: 28, b: 32 },
-    veinHighlight: { r: 40, g: 45, b: 50 },
+    base: { r: 25, g: 28, b: 25 },
+    mid: { r: 38, g: 42, b: 38 },
+    highlight: { r: 55, g: 62, b: 55 },
+    shadow: { r: 15, g: 18, b: 16 },
+    vein: { r: 35, g: 32, b: 30 },
+    veinHighlight: { r: 55, g: 50, b: 45 },
   },
   
-  /** Barnacled - crusty organic growth */
-  barnacled: {
-    base: { r: 22, g: 25, b: 20 },
-    mid: { r: 35, g: 40, b: 32 },
-    highlight: { r: 55, g: 60, b: 50 },
-    vein: { r: 40, g: 35, b: 30 },
-    veinHighlight: { r: 60, g: 55, b: 45 },
-  },
-  
-  /** Membranous - thin organic tissue */
+  /** Membranous - thin translucent tissue */
   membranous: {
-    base: { r: 20, g: 15, b: 25 },
-    mid: { r: 30, g: 22, b: 35 },
-    highlight: { r: 50, g: 38, b: 55 },
-    vein: { r: 60, g: 30, b: 45 },
-    veinHighlight: { r: 90, g: 45, b: 65 },
+    base: { r: 25, g: 20, b: 30 },
+    mid: { r: 38, g: 30, b: 45 },
+    highlight: { r: 60, g: 48, b: 68 },
+    shadow: { r: 15, g: 12, b: 20 },
+    vein: { r: 70, g: 40, b: 55 },
+    veinHighlight: { r: 100, g: 60, b: 75 },
   },
 };
 
 export type SurfaceType = keyof typeof surfacePalettes;
-
-// ============================================
-// SEEDED RANDOM (for consistent patterns)
-// ============================================
-
-function seededRandom(seed: number): () => number {
-  return () => {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  };
-}
 
 // ============================================
 // MAIN SURFACE DRAWING
@@ -77,22 +167,19 @@ export interface OrganicSurfaceOptions {
   /** Surface type (default: 'fleshy') */
   type?: SurfaceType;
   
-  /** Show veins/capillaries (default: true) */
+  /** Noise scale - larger = bigger features (default: 0.003) */
+  noiseScale?: number;
+  
+  /** Show organic veins (default: true) */
   showVeins?: boolean;
   
-  /** Vein density 0-1 (default: 0.5) */
-  veinDensity?: number;
-  
-  /** Show grain/texture (default: true) */
-  showGrain?: boolean;
-  
-  /** Grain density (default: 0.6) */
-  grainDensity?: number;
+  /** Number of major veins (default: 6) */
+  veinCount?: number;
   
   /** Random seed for consistent patterns (default: 42) */
   seed?: number;
   
-  /** Animation time for subtle movement (optional) */
+  /** Animation time for subtle pulsing (optional) */
   time?: number;
   
   /** Light position for surface response (optional) */
@@ -102,21 +189,17 @@ export interface OrganicSurfaceOptions {
 }
 
 /**
- * Draw an organic surface that reads as SOLID, not void.
- * Uses directional patterns (veins, grain) instead of radial gradients.
+ * Draw an organic surface that looks like LIVING TISSUE.
+ * Uses noise for mottling, bezier curves for veins, proper depth cues.
  * 
  * @example
- * // Draw fleshy wall
  * drawOrganicSurface(ctx, canvas.width, canvas.height, {
  *   type: 'fleshy',
  *   showVeins: true,
- *   veinDensity: 0.6,
  *   lightX: mouseX,
  *   lightY: mouseY,
+ *   time: frameCount,
  * });
- * 
- * // Then draw eyes ON TOP
- * drawEyes(ctx, eyes);
  */
 export function drawOrganicSurface(
   ctx: CanvasRenderingContext2D,
@@ -126,300 +209,453 @@ export function drawOrganicSurface(
 ): void {
   const {
     type = 'fleshy',
+    noiseScale = 0.003,
     showVeins = true,
-    veinDensity = 0.5,
-    showGrain = true,
-    grainDensity = 0.6,
+    veinCount = 6,
     seed = 42,
     time = 0,
     lightX,
     lightY,
-    lightRadius = 200,
+    lightRadius = 250,
   } = options;
 
-  const palette = surfacePalettes[type];
-  const random = seededRandom(seed);
+  const palette = surfacePalettes[type] || surfacePalettes.fleshy;
+  const perm = createPermutation(seed);
 
-  // 1. BASE LAYER - gradient that shows it's a surface, not void
-  const baseGrad = ctx.createLinearGradient(0, 0, width, height);
-  baseGrad.addColorStop(0, `rgb(${palette.base.r}, ${palette.base.g}, ${palette.base.b})`);
-  baseGrad.addColorStop(0.5, `rgb(${palette.mid.r}, ${palette.mid.g}, ${palette.mid.b})`);
-  baseGrad.addColorStop(1, `rgb(${palette.base.r + 5}, ${palette.base.g + 3}, ${palette.base.b + 5})`);
-  
-  ctx.fillStyle = baseGrad;
-  ctx.fillRect(0, 0, width, height);
+  // 1. BASE MOTTLED LAYER - noise-based color variation
+  drawMottledBase(ctx, width, height, palette, perm, noiseScale, time);
 
-  // 2. DIRECTIONAL GRAIN - horizontal/diagonal strokes that read as texture
-  if (showGrain) {
-    drawGrain(ctx, width, height, palette, random, grainDensity, time);
-  }
+  // 2. DEPTH LAYER - raised and recessed areas (NOT holes)
+  drawDepthLayer(ctx, width, height, palette, perm, noiseScale);
 
-  // 3. VEINS - branching lines that read as organic surface
+  // 3. ORGANIC VEINS - bezier curves with varied thickness
   if (showVeins) {
-    drawVeins(ctx, width, height, palette, random, veinDensity, time);
+    drawOrganicVeins(ctx, width, height, palette, perm, veinCount, time);
   }
 
-  // 4. SURFACE IRREGULARITIES - bumps and ridges (NOT circular)
-  drawRidges(ctx, width, height, palette, random);
+  // 4. SUBSURFACE DETAIL - pores, texture at larger scale
+  drawSubsurfaceDetail(ctx, width, height, palette, perm, noiseScale * 3);
 
-  // 5. LIGHT RESPONSE - if light position provided
+  // 5. LIGHT RESPONSE
   if (lightX !== undefined && lightY !== undefined) {
-    drawSurfaceLightResponse(ctx, width, height, lightX, lightY, lightRadius, palette);
+    drawFleshLightResponse(ctx, width, height, lightX, lightY, lightRadius, palette, perm);
   }
 }
 
 // ============================================
-// GRAIN TEXTURE
+// MOTTLED BASE (noise-based color variation)
 // ============================================
 
-function drawGrain(
+function drawMottledBase(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   palette: SurfacePalette,
-  random: () => number,
-  density: number,
+  perm: number[],
+  noiseScale: number,
   time: number
 ): void {
-  const lineCount = Math.floor(density * 150);
+  // Use imageData for per-pixel noise (much more organic than gradients)
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
   
-  ctx.lineCap = 'round';
+  // Time-based subtle shift
+  const timeOffset = time * 0.00005;
   
-  for (let i = 0; i < lineCount; i++) {
-    const x = random() * width;
-    const y = random() * height;
-    
-    // Mostly horizontal with slight variation
-    const angle = (random() - 0.5) * 0.4 + Math.PI * 0.1;
-    const length = 20 + random() * 60;
-    
-    // Subtle movement over time
-    const wobble = time > 0 ? Math.sin(time * 0.0005 + i * 0.1) * 2 : 0;
-    
-    const endX = x + Math.cos(angle) * length;
-    const endY = y + Math.sin(angle) * length + wobble;
-    
-    // Vary color slightly
-    const colorVar = random() * 10 - 5;
-    const alpha = 0.1 + random() * 0.15;
-    
-    ctx.strokeStyle = `rgba(${palette.mid.r + colorVar}, ${palette.mid.g + colorVar}, ${palette.mid.b + colorVar}, ${alpha})`;
-    ctx.lineWidth = 1 + random() * 2;
-    
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(endX, endY);
-    ctx.stroke();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Multi-octave noise for organic variation
+      const n1 = fbm(x * noiseScale + timeOffset, y * noiseScale, perm, 4);
+      const n2 = fbm(x * noiseScale * 2 + 100, y * noiseScale * 2 + 100, perm, 3);
+      
+      // Combine noises for color blending
+      const blend = (n1 + 1) / 2; // 0-1
+      const detail = (n2 + 1) / 2;
+      
+      // Interpolate between base, mid, and shadow based on noise
+      let r, g, b;
+      if (blend < 0.4) {
+        const t = blend / 0.4;
+        r = palette.shadow.r + (palette.base.r - palette.shadow.r) * t;
+        g = palette.shadow.g + (palette.base.g - palette.shadow.g) * t;
+        b = palette.shadow.b + (palette.base.b - palette.shadow.b) * t;
+      } else if (blend < 0.7) {
+        const t = (blend - 0.4) / 0.3;
+        r = palette.base.r + (palette.mid.r - palette.base.r) * t;
+        g = palette.base.g + (palette.mid.g - palette.base.g) * t;
+        b = palette.base.b + (palette.mid.b - palette.base.b) * t;
+      } else {
+        const t = (blend - 0.7) / 0.3;
+        r = palette.mid.r + (palette.highlight.r - palette.mid.r) * t * 0.3;
+        g = palette.mid.g + (palette.highlight.g - palette.mid.g) * t * 0.3;
+        b = palette.mid.b + (palette.highlight.b - palette.mid.b) * t * 0.3;
+      }
+      
+      // Add detail variation
+      r += (detail - 0.5) * 8;
+      g += (detail - 0.5) * 6;
+      b += (detail - 0.5) * 8;
+      
+      const idx = (y * width + x) * 4;
+      data[idx] = Math.max(0, Math.min(255, r));
+      data[idx + 1] = Math.max(0, Math.min(255, g));
+      data[idx + 2] = Math.max(0, Math.min(255, b));
+      data[idx + 3] = 255;
+    }
   }
+  
+  ctx.putImageData(imageData, 0, 0);
 }
 
 // ============================================
-// VEINS / CAPILLARIES
+// DEPTH LAYER (raised/recessed without holes)
 // ============================================
 
-interface VeinSegment {
+function drawDepthLayer(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  palette: SurfacePalette,
+  perm: number[],
+  noiseScale: number
+): void {
+  // Large-scale depth variation - like muscles under skin
+  const depthScale = noiseScale * 0.5;
+  
+  ctx.globalCompositeOperation = 'overlay';
+  
+  // Draw several large depth regions
+  for (let i = 0; i < 8; i++) {
+    const cx = simplex2D(i * 50, 0, perm) * 0.5 + 0.5;
+    const cy = simplex2D(0, i * 50, perm) * 0.5 + 0.5;
+    const x = cx * width;
+    const y = cy * height;
+    const size = 100 + Math.abs(simplex2D(i * 30, i * 30, perm)) * 200;
+    
+    // Raised area - highlight on top edge, shadow on bottom
+    const isRaised = simplex2D(i * 20, i * 20 + 500, perm) > 0;
+    
+    if (isRaised) {
+      // Subtle highlight gradient (NOT circular - use ellipse)
+      const angle = simplex2D(i * 10, 0, perm) * Math.PI;
+      
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      
+      const grad = ctx.createLinearGradient(0, -size * 0.3, 0, size * 0.3);
+      grad.addColorStop(0, `rgba(${palette.highlight.r}, ${palette.highlight.g}, ${palette.highlight.b}, 0.15)`);
+      grad.addColorStop(0.5, 'rgba(128, 128, 128, 0)');
+      grad.addColorStop(1, `rgba(${palette.shadow.r}, ${palette.shadow.g}, ${palette.shadow.b}, 0.1)`);
+      
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size, size * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+    }
+  }
+  
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// ============================================
+// ORGANIC VEINS (bezier curves, varied thickness)
+// ============================================
+
+interface VeinPoint {
   x: number;
   y: number;
-  angle: number;
   thickness: number;
-  depth: number;
 }
 
-function drawVeins(
+function drawOrganicVeins(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   palette: SurfacePalette,
-  random: () => number,
-  density: number,
+  perm: number[],
+  count: number,
   time: number
 ): void {
-  const mainVeinCount = Math.floor(density * 8);
-  
-  for (let v = 0; v < mainVeinCount; v++) {
-    // Start from edges
-    const side = Math.floor(random() * 4);
+  for (let v = 0; v < count; v++) {
+    // Start from edges with some randomness
+    const edge = Math.floor((simplex2D(v * 100, 0, perm) + 1) * 2) % 4;
     let startX: number, startY: number, startAngle: number;
     
-    switch (side) {
+    const edgePos = (simplex2D(v * 50, v * 50, perm) + 1) / 2;
+    
+    switch (edge) {
       case 0: // top
-        startX = random() * width;
-        startY = 0;
-        startAngle = Math.PI / 2 + (random() - 0.5) * 0.5;
+        startX = edgePos * width;
+        startY = -20;
+        startAngle = Math.PI / 2 + (simplex2D(v * 30, 0, perm)) * 0.4;
         break;
       case 1: // right
-        startX = width;
-        startY = random() * height;
-        startAngle = Math.PI + (random() - 0.5) * 0.5;
+        startX = width + 20;
+        startY = edgePos * height;
+        startAngle = Math.PI + (simplex2D(v * 30, 100, perm)) * 0.4;
         break;
       case 2: // bottom
-        startX = random() * width;
-        startY = height;
-        startAngle = -Math.PI / 2 + (random() - 0.5) * 0.5;
+        startX = edgePos * width;
+        startY = height + 20;
+        startAngle = -Math.PI / 2 + (simplex2D(v * 30, 200, perm)) * 0.4;
         break;
       default: // left
-        startX = 0;
-        startY = random() * height;
-        startAngle = (random() - 0.5) * 0.5;
+        startX = -20;
+        startY = edgePos * height;
+        startAngle = (simplex2D(v * 30, 300, perm)) * 0.4;
     }
     
-    drawVeinBranch(ctx, startX, startY, startAngle, 3 + random() * 2, 0, random, palette, time, width, height);
+    drawOrganicVeinBranch(
+      ctx, startX, startY, startAngle,
+      5 + Math.abs(simplex2D(v * 20, v * 20, perm)) * 4, // thickness 5-9
+      0, perm, palette, time, width, height, v * 1000
+    );
   }
 }
 
-function drawVeinBranch(
+function drawOrganicVeinBranch(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
+  startX: number,
+  startY: number,
   angle: number,
   thickness: number,
   depth: number,
-  random: () => number,
+  perm: number[],
   palette: SurfacePalette,
   time: number,
   width: number,
-  height: number
+  height: number,
+  seedOffset: number
 ): void {
-  if (thickness < 0.5 || depth > 5) return;
-  if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
+  if (thickness < 1 || depth > 4) return;
   
-  const segmentLength = 15 + random() * 25;
-  const segments: VeinSegment[] = [];
+  // Generate organic path using bezier curves
+  const points: VeinPoint[] = [{ x: startX, y: startY, thickness }];
   
-  let currentX = x;
-  let currentY = y;
+  let currentX = startX;
+  let currentY = startY;
   let currentAngle = angle;
   let currentThickness = thickness;
   
-  // Draw main vein path
-  const pathLength = 5 + Math.floor(random() * 8);
+  const segmentCount = 8 + Math.floor(Math.abs(simplex2D(seedOffset, 0, perm)) * 6);
   
-  for (let i = 0; i < pathLength; i++) {
-    // Wobble angle
-    currentAngle += (random() - 0.5) * 0.4;
+  for (let i = 0; i < segmentCount; i++) {
+    // Organic angle variation using noise
+    const angleNoise = simplex2D(seedOffset + i * 10, depth * 100, perm) * 0.6;
+    currentAngle += angleNoise;
+    
+    // Segment length varies
+    const segLength = 30 + simplex2D(seedOffset + i * 20, 0, perm) * 20;
     
     // Time-based subtle pulse
-    const pulse = time > 0 ? Math.sin(time * 0.001 + i * 0.5) * 0.5 : 0;
+    const pulse = time > 0 ? Math.sin(time * 0.002 + i * 0.5 + seedOffset * 0.01) * 2 : 0;
     
-    const nextX = currentX + Math.cos(currentAngle) * segmentLength;
-    const nextY = currentY + Math.sin(currentAngle) * segmentLength;
+    currentX += Math.cos(currentAngle) * segLength;
+    currentY += Math.sin(currentAngle) * segLength + pulse;
     
-    // Draw segment
-    const alpha = 0.3 + (thickness / 5) * 0.4;
-    ctx.strokeStyle = `rgba(${palette.vein.r}, ${palette.vein.g}, ${palette.vein.b}, ${alpha})`;
-    ctx.lineWidth = currentThickness + pulse;
-    ctx.lineCap = 'round';
+    // Thickness varies organically - bulges and tapers
+    const thicknessNoise = simplex2D(seedOffset + i * 15, depth * 50 + 500, perm);
+    currentThickness *= 0.92 + thicknessNoise * 0.1; // Taper with variation
     
-    ctx.beginPath();
-    ctx.moveTo(currentX, currentY);
-    ctx.lineTo(nextX, nextY);
-    ctx.stroke();
+    // Occasional bulge
+    if (thicknessNoise > 0.6) {
+      currentThickness *= 1.15;
+    }
     
-    // Highlight on top edge of vein
-    ctx.strokeStyle = `rgba(${palette.veinHighlight.r}, ${palette.veinHighlight.g}, ${palette.veinHighlight.b}, ${alpha * 0.3})`;
-    ctx.lineWidth = currentThickness * 0.3;
-    ctx.beginPath();
-    ctx.moveTo(currentX, currentY - currentThickness * 0.3);
-    ctx.lineTo(nextX, nextY - currentThickness * 0.3);
-    ctx.stroke();
+    points.push({ x: currentX, y: currentY, thickness: Math.max(0.5, currentThickness) });
     
-    segments.push({ x: currentX, y: currentY, angle: currentAngle, thickness: currentThickness, depth });
-    
-    currentX = nextX;
-    currentY = nextY;
-    currentThickness *= 0.92; // Taper
+    // Stop if out of bounds
+    if (currentX < -50 || currentX > width + 50 || currentY < -50 || currentY > height + 50) {
+      break;
+    }
     
     // Branch chance
-    if (random() < 0.25 && depth < 4) {
-      const branchAngle = currentAngle + (random() > 0.5 ? 1 : -1) * (0.4 + random() * 0.4);
-      drawVeinBranch(ctx, currentX, currentY, branchAngle, currentThickness * 0.6, depth + 1, random, palette, time, width, height);
+    if (i > 2 && simplex2D(seedOffset + i * 25, depth * 200, perm) > 0.7 && depth < 3) {
+      const branchAngle = currentAngle + (simplex2D(seedOffset + i * 30, 0, perm) > 0 ? 1 : -1) * (0.5 + Math.abs(simplex2D(seedOffset + i * 35, 0, perm)) * 0.5);
+      drawOrganicVeinBranch(
+        ctx, currentX, currentY, branchAngle,
+        currentThickness * 0.6, depth + 1,
+        perm, palette, time, width, height,
+        seedOffset + i * 1000 + depth * 10000
+      );
     }
+  }
+  
+  // Draw the vein using bezier curves between points
+  if (points.length < 2) return;
+  
+  // Main vein body
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    
+    // Catmull-Rom to Bezier control points for smooth curves
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    
+    // Draw segment with thickness gradient
+    const avgThickness = (p1.thickness + p2.thickness) / 2;
+    
+    // Shadow/depth underneath
+    ctx.strokeStyle = `rgba(${palette.shadow.r}, ${palette.shadow.g}, ${palette.shadow.b}, 0.4)`;
+    ctx.lineWidth = avgThickness + 2;
+    ctx.beginPath();
+    ctx.moveTo(p1.x + 1, p1.y + 1);
+    ctx.bezierCurveTo(cp1x + 1, cp1y + 1, cp2x + 1, cp2y + 1, p2.x + 1, p2.y + 1);
+    ctx.stroke();
+    
+    // Main vein
+    ctx.strokeStyle = `rgba(${palette.vein.r}, ${palette.vein.g}, ${palette.vein.b}, 0.7)`;
+    ctx.lineWidth = avgThickness;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    ctx.stroke();
+    
+    // Highlight on top edge
+    ctx.strokeStyle = `rgba(${palette.veinHighlight.r}, ${palette.veinHighlight.g}, ${palette.veinHighlight.b}, 0.25)`;
+    ctx.lineWidth = avgThickness * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y - avgThickness * 0.25);
+    ctx.bezierCurveTo(cp1x, cp1y - avgThickness * 0.25, cp2x, cp2y - avgThickness * 0.25, p2.x, p2.y - avgThickness * 0.25);
+    ctx.stroke();
   }
 }
 
 // ============================================
-// RIDGES (directional, not circular)
+// SUBSURFACE DETAIL (pores, large-scale texture)
 // ============================================
 
-function drawRidges(
+function drawSubsurfaceDetail(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   palette: SurfacePalette,
-  random: () => number
+  perm: number[],
+  scale: number
 ): void {
-  const ridgeCount = 15 + Math.floor(random() * 10);
+  ctx.globalCompositeOperation = 'soft-light';
   
-  for (let i = 0; i < ridgeCount; i++) {
-    const x = random() * width;
-    const y = random() * height;
-    const ridgeWidth = 40 + random() * 80;
-    const ridgeHeight = 8 + random() * 15;
-    const angle = random() * Math.PI;
+  // Large organic shapes that suggest structure beneath
+  for (let i = 0; i < 15; i++) {
+    const x = (simplex2D(i * 70, 0, perm) + 1) / 2 * width;
+    const y = (simplex2D(0, i * 70, perm) + 1) / 2 * height;
+    const size = 40 + Math.abs(simplex2D(i * 40, i * 40, perm)) * 100;
+    const angle = simplex2D(i * 25, 500, perm) * Math.PI;
     
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
     
-    // Ridge is an elongated shape (NOT circular)
-    const grad = ctx.createLinearGradient(0, -ridgeHeight, 0, ridgeHeight);
-    grad.addColorStop(0, `rgba(${palette.highlight.r}, ${palette.highlight.g}, ${palette.highlight.b}, 0.1)`);
-    grad.addColorStop(0.3, `rgba(${palette.mid.r}, ${palette.mid.g}, ${palette.mid.b}, 0.15)`);
-    grad.addColorStop(0.7, `rgba(${palette.base.r}, ${palette.base.g}, ${palette.base.b}, 0.1)`);
+    // Elongated organic shape
+    const aspectRatio = 0.3 + Math.abs(simplex2D(i * 35, 0, perm)) * 0.4;
+    
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+    const brightness = simplex2D(i * 45, 250, perm) > 0 ? 1.2 : 0.8;
+    grad.addColorStop(0, `rgba(${palette.mid.r * brightness}, ${palette.mid.g * brightness}, ${palette.mid.b * brightness}, 0.15)`);
+    grad.addColorStop(0.7, `rgba(${palette.base.r}, ${palette.base.g}, ${palette.base.b}, 0.05)`);
     grad.addColorStop(1, 'transparent');
     
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.ellipse(0, 0, ridgeWidth / 2, ridgeHeight / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, size, size * aspectRatio, 0, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.restore();
   }
+  
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // ============================================
-// SURFACE LIGHT RESPONSE
+// LIGHT RESPONSE (subsurface scattering)
 // ============================================
 
-function drawSurfaceLightResponse(
+function drawFleshLightResponse(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   lightX: number,
   lightY: number,
   lightRadius: number,
-  palette: SurfacePalette
+  palette: SurfacePalette,
+  perm: number[]
 ): void {
-  // When light hits the surface, it should reveal texture, not create a hole
-  // Use a soft LINEAR gradient from light position, not radial
+  // Subsurface scattering - light penetrates flesh, creates warm glow
   
-  const angle = Math.atan2(height / 2 - lightY, width / 2 - lightX);
-  const gradLength = lightRadius * 1.5;
+  // Inner warm glow (light penetrating tissue)
+  const scatterGrad = ctx.createRadialGradient(
+    lightX, lightY, 0,
+    lightX, lightY, lightRadius * 1.5
+  );
+  scatterGrad.addColorStop(0, `rgba(${palette.veinHighlight.r + 20}, ${palette.veinHighlight.g}, ${palette.veinHighlight.b - 10}, 0.12)`);
+  scatterGrad.addColorStop(0.3, `rgba(${palette.vein.r + 15}, ${palette.vein.g}, ${palette.vein.b}, 0.08)`);
+  scatterGrad.addColorStop(0.6, `rgba(${palette.mid.r + 10}, ${palette.mid.g + 5}, ${palette.mid.b + 5}, 0.04)`);
+  scatterGrad.addColorStop(1, 'transparent');
   
-  const endX = lightX + Math.cos(angle) * gradLength;
-  const endY = lightY + Math.sin(angle) * gradLength;
+  ctx.fillStyle = scatterGrad;
+  ctx.fillRect(0, 0, width, height);
   
-  // Highlight where light hits (subtle)
-  const highlightGrad = ctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, lightRadius * 0.8);
-  highlightGrad.addColorStop(0, `rgba(${palette.highlight.r + 30}, ${palette.highlight.g + 25}, ${palette.highlight.b + 25}, 0.15)`);
-  highlightGrad.addColorStop(0.5, `rgba(${palette.mid.r + 15}, ${palette.mid.g + 12}, ${palette.mid.b + 12}, 0.08)`);
+  // Surface highlight (specular)
+  const highlightGrad = ctx.createRadialGradient(
+    lightX, lightY, 0,
+    lightX, lightY, lightRadius * 0.5
+  );
+  highlightGrad.addColorStop(0, `rgba(${palette.highlight.r + 40}, ${palette.highlight.g + 35}, ${palette.highlight.b + 30}, 0.2)`);
+  highlightGrad.addColorStop(0.5, `rgba(${palette.highlight.r + 20}, ${palette.highlight.g + 15}, ${palette.highlight.b + 10}, 0.08)`);
   highlightGrad.addColorStop(1, 'transparent');
   
   ctx.fillStyle = highlightGrad;
   ctx.fillRect(0, 0, width, height);
   
-  // Subsurface scattering effect for fleshy/membranous surfaces
-  // Light penetrates slightly, creating warm glow
-  // Check by color - fleshy and membranous have reddish veins
-  const hasSubsurfaceScattering = palette.vein.r > palette.vein.g && palette.vein.r > palette.vein.b;
-  if (hasSubsurfaceScattering) {
-    const scatterGrad = ctx.createRadialGradient(lightX, lightY, lightRadius * 0.3, lightX, lightY, lightRadius * 1.2);
-    scatterGrad.addColorStop(0, `rgba(${palette.veinHighlight.r}, ${palette.veinHighlight.g * 0.6}, ${palette.veinHighlight.b * 0.6}, 0.08)`);
-    scatterGrad.addColorStop(1, 'transparent');
+  // Reveal more vein detail near light
+  // Draw subtle additional veins that only appear in light
+  ctx.globalCompositeOperation = 'overlay';
+  
+  const revealRadius = lightRadius * 1.2;
+  for (let i = 0; i < 5; i++) {
+    const angle = (simplex2D(lightX * 0.01 + i * 20, lightY * 0.01, perm) + 1) * Math.PI;
+    const dist = 20 + Math.abs(simplex2D(i * 30, 0, perm)) * 60;
+    const vx = lightX + Math.cos(angle) * dist;
+    const vy = lightY + Math.sin(angle) * dist;
     
-    ctx.fillStyle = scatterGrad;
-    ctx.fillRect(0, 0, width, height);
+    const veinAlpha = Math.max(0, 1 - Math.sqrt((vx - lightX) ** 2 + (vy - lightY) ** 2) / revealRadius) * 0.3;
+    
+    if (veinAlpha > 0.05) {
+      ctx.strokeStyle = `rgba(${palette.vein.r + 20}, ${palette.vein.g}, ${palette.vein.b}, ${veinAlpha})`;
+      ctx.lineWidth = 1 + Math.abs(simplex2D(i * 25, 0, perm)) * 2;
+      ctx.lineCap = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(vx, vy);
+      
+      // Short curving vein segment
+      const endAngle = angle + (simplex2D(i * 15, 500, perm)) * 0.8;
+      const length = 20 + Math.abs(simplex2D(i * 35, 0, perm)) * 40;
+      const cpDist = length * 0.5;
+      const cpAngle = angle + (simplex2D(i * 20, 250, perm)) * 0.5;
+      
+      ctx.quadraticCurveTo(
+        vx + Math.cos(cpAngle) * cpDist,
+        vy + Math.sin(cpAngle) * cpDist,
+        vx + Math.cos(endAngle) * length,
+        vy + Math.sin(endAngle) * length
+      );
+      ctx.stroke();
+    }
   }
+  
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // ============================================
@@ -428,7 +664,6 @@ function drawSurfaceLightResponse(
 
 /**
  * Draw barnacle/growth clusters on a surface
- * These are raised bumps, NOT holes
  */
 export function drawBarnacles(
   ctx: CanvasRenderingContext2D,
@@ -444,45 +679,39 @@ export function drawBarnacles(
   const {
     count = 8,
     seed = 123,
-    palette = surfacePalettes.barnacled as SurfacePalette,
+    palette = surfacePalettes.rocky,
   } = options;
 
-  const random = seededRandom(seed);
+  const perm = createPermutation(seed);
   
   for (let i = 0; i < count; i++) {
-    const angle = random() * Math.PI * 2;
-    const dist = random() * clusterRadius;
+    const angle = (simplex2D(i * 50, 0, perm) + 1) * Math.PI;
+    const dist = Math.abs(simplex2D(i * 30, i * 30, perm)) * clusterRadius;
     const bx = x + Math.cos(angle) * dist;
     const by = y + Math.sin(angle) * dist;
-    const size = 3 + random() * 8;
+    const size = 3 + Math.abs(simplex2D(i * 40, 0, perm)) * 8;
     
-    // Barnacle is a raised ring, not a hole
-    // Highlight on top, shadow on bottom
-    
-    // Outer ring (raised edge)
-    ctx.strokeStyle = `rgba(${palette.highlight.r}, ${palette.highlight.g}, ${palette.highlight.b}, 0.4)`;
+    // Raised bump with highlight/shadow
+    ctx.strokeStyle = `rgba(${palette.highlight.r}, ${palette.highlight.g}, ${palette.highlight.b}, 0.5)`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(bx, by, size, Math.PI * 0.8, Math.PI * 1.8);
+    ctx.arc(bx, by, size, Math.PI * 0.7, Math.PI * 1.9);
     ctx.stroke();
     
-    // Shadow on bottom
-    ctx.strokeStyle = `rgba(${palette.base.r}, ${palette.base.g}, ${palette.base.b}, 0.5)`;
+    ctx.strokeStyle = `rgba(${palette.shadow.r}, ${palette.shadow.g}, ${palette.shadow.b}, 0.6)`;
     ctx.beginPath();
-    ctx.arc(bx, by, size, Math.PI * 1.8, Math.PI * 0.8);
+    ctx.arc(bx, by, size, Math.PI * 1.9, Math.PI * 0.7);
     ctx.stroke();
     
-    // Center (slightly raised)
-    ctx.fillStyle = `rgba(${palette.mid.r}, ${palette.mid.g}, ${palette.mid.b}, 0.6)`;
+    ctx.fillStyle = `rgba(${palette.mid.r}, ${palette.mid.g}, ${palette.mid.b}, 0.7)`;
     ctx.beginPath();
-    ctx.arc(bx, by, size * 0.4, 0, Math.PI * 2);
+    ctx.arc(bx, by, size * 0.5, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
 /**
- * Draw scarring/damage on surface
- * Linear marks that read as scratches, not holes
+ * Draw organic scarring
  */
 export function drawScarring(
   ctx: CanvasRenderingContext2D,
@@ -498,26 +727,34 @@ export function drawScarring(
   const {
     angle = 0,
     width = 3,
-    palette = surfacePalettes.fleshy as SurfacePalette,
+    palette = surfacePalettes.fleshy,
   } = options;
 
+  // Organic scar with slight curve
+  const midX = x + Math.cos(angle) * length * 0.5;
+  const midY = y + Math.sin(angle) * length * 0.5;
   const endX = x + Math.cos(angle) * length;
   const endY = y + Math.sin(angle) * length;
   
-  // Dark center (the scar itself)
-  ctx.strokeStyle = `rgba(${palette.base.r - 5}, ${palette.base.g - 5}, ${palette.base.b - 5}, 0.6)`;
+  // Offset for curve
+  const curveOffset = (Math.random() - 0.5) * 15;
+  const cpX = midX + Math.cos(angle + Math.PI / 2) * curveOffset;
+  const cpY = midY + Math.sin(angle + Math.PI / 2) * curveOffset;
+  
+  // Dark center
+  ctx.strokeStyle = `rgba(${palette.shadow.r}, ${palette.shadow.g}, ${palette.shadow.b}, 0.7)`;
   ctx.lineWidth = width;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(x, y);
-  ctx.lineTo(endX, endY);
+  ctx.quadraticCurveTo(cpX, cpY, endX, endY);
   ctx.stroke();
   
-  // Raised edge (scar tissue)
-  ctx.strokeStyle = `rgba(${palette.veinHighlight.r}, ${palette.veinHighlight.g}, ${palette.veinHighlight.b}, 0.3)`;
-  ctx.lineWidth = width * 0.5;
+  // Raised edge
+  ctx.strokeStyle = `rgba(${palette.veinHighlight.r}, ${palette.veinHighlight.g}, ${palette.veinHighlight.b}, 0.35)`;
+  ctx.lineWidth = width * 0.4;
   ctx.beginPath();
-  ctx.moveTo(x, y - width * 0.5);
-  ctx.lineTo(endX, endY - width * 0.5);
+  ctx.moveTo(x, y - width * 0.4);
+  ctx.quadraticCurveTo(cpX, cpY - width * 0.4, endX, endY - width * 0.4);
   ctx.stroke();
 }
