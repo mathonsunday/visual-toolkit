@@ -128,3 +128,14 @@ export {
   type Eye,
   type EyeOptions,
 } from './eyes.js';
+
+// Organic surfaces
+export {
+  drawOrganicSurface,
+  drawBarnacles,
+  drawScarring,
+  surfacePalettes,
+  type SurfaceType,
+  type SurfacePalette,
+  type OrganicSurfaceOptions,
+} from './surfaces.js';

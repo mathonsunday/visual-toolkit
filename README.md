@@ -586,6 +586,65 @@ Eyes automatically:
 
 ---
 
+## Organic Surfaces
+
+Draw surfaces that read as SOLID (flesh, rock, membrane) - not void or holes.
+
+### The Problem
+Radial gradients look like holes/sockets. That's bad when you're drawing a wall with eyes on it.
+
+### The Solution
+`drawOrganicSurface()` uses directional patterns (veins, grain, ridges) instead of radial gradients.
+
+```typescript
+import { drawOrganicSurface, drawEyes } from 'visual-toolkit';
+
+// Draw the wall FIRST
+drawOrganicSurface(ctx, canvas.width, canvas.height, {
+  type: 'fleshy',        // 'fleshy' | 'rocky' | 'barnacled' | 'membranous'
+  showVeins: true,
+  veinDensity: 0.6,
+  showGrain: true,
+  lightX: mouseX,        // Surface responds to light
+  lightY: mouseY,
+  lightRadius: 200,
+  time: frameCount,      // Optional subtle animation
+});
+
+// THEN draw eyes on top
+drawEyes(ctx, eyes);
+```
+
+### Surface Types
+
+| Type | Description |
+|------|-------------|
+| `fleshy` | Dark flesh, reddish veins, subsurface scattering |
+| `rocky` | Cave wall, gray-blue tones, subtle grain |
+| `barnacled` | Crusty organic growth, green-brown tones |
+| `membranous` | Thin tissue, purple tones, visible veins |
+
+### Additional Surface Elements
+
+```typescript
+import { drawBarnacles, drawScarring } from 'visual-toolkit';
+
+// Add barnacle clusters (raised bumps, NOT holes)
+drawBarnacles(ctx, 200, 150, 40, { count: 10 });
+
+// Add scarring (linear marks that read as scratches)
+drawScarring(ctx, 100, 200, 80, { angle: 0.3, width: 4 });
+```
+
+### Surface Light Response
+
+When you provide `lightX` and `lightY`, the surface:
+- Shows highlights where light hits
+- Has subsurface scattering for fleshy/membranous types (warm glow)
+- Reveals texture without creating "hole" artifacts
+
+---
+
 ## License
 
 ISC
