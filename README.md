@@ -468,6 +468,124 @@ For projects without TypeScript/bundlers, use the pre-built browser bundle:
 
 ---
 
+## Lighting Helpers
+
+### Calculate Illumination
+
+```typescript
+import { calculateIllumination } from 'visual-toolkit';
+
+// How lit is this creature by the player's light?
+const illumination = calculateIllumination(mouseX, mouseY, creatureX, creatureY, 250);
+
+if (illumination > 0.4) {
+  // Reveal hidden details
+}
+```
+
+Uses squared falloff for natural light decay.
+
+### Draw Player Light
+
+```typescript
+import { drawPlayerLight } from 'visual-toolkit';
+
+// Complete multi-layer light effect in one call
+drawPlayerLight(ctx, mouseX, mouseY, 120, {
+  intensity: 1,
+  pulseTime: frameCount,  // optional subtle pulse
+});
+```
+
+### Organic Surface Texture
+
+```typescript
+import { drawOrganicTexture } from 'visual-toolkit';
+
+// Fill background first
+ctx.fillStyle = '#0a0a12';
+ctx.fillRect(0, 0, width, height);
+
+// Add living texture
+drawOrganicTexture(ctx, width, height, {
+  density: 25,
+  color: { r: 20, g: 30, b: 40 },
+  intensity: 0.15,
+  time: frameCount,  // optional slow movement
+});
+```
+
+### Caustics
+
+```typescript
+import { drawCaustics } from 'visual-toolkit';
+
+// Light filtering through water at top of scene
+drawCaustics(ctx, width, height, frameCount, {
+  count: 5,
+  heightRatio: 0.4,
+  intensity: 0.03,
+});
+```
+
+---
+
+## Eye System
+
+For scenes with multiple reactive eyes that track, blink, and dilate.
+
+### Create and Update Eyes
+
+```typescript
+import { createEye, updateEye, drawEye } from 'visual-toolkit';
+
+// Create eyes
+const eyes = [
+  createEye({ x: 100, y: 150, size: 8 }),
+  createEye({ x: 400, y: 200, size: 6, hue: 30 }),  // orange eye
+  createEye({ x: 250, y: 300, size: 10, awarenessRadius: 300 }),
+];
+
+function render() {
+  // Update all eyes (handles blinking, tracking, dilation)
+  for (const eye of eyes) {
+    updateEye(eye, mouseX, mouseY, 16);
+  }
+  
+  // Draw all eyes
+  for (const eye of eyes) {
+    drawEye(ctx, eye);
+  }
+}
+```
+
+### Batch Operations
+
+```typescript
+import { createEyes, updateEyes, drawEyes } from 'visual-toolkit';
+
+const eyes = createEyes([
+  { x: 100, y: 150, size: 8 },
+  { x: 400, y: 200, size: 6 },
+]);
+
+function render() {
+  updateEyes(eyes, mouseX, mouseY, 16);
+  drawEyes(ctx, eyes);
+}
+```
+
+### Eye Properties
+
+Eyes automatically:
+- Track the light source (pupil follows)
+- Contract pupils in bright light (slit at illumination > 0.4)
+- Dilate pupils in darkness
+- Blink at random intervals
+- Glow brighter when illuminated
+
+---
+
 ## License
 
 ISC

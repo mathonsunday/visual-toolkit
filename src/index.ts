@@ -107,3 +107,24 @@ export {
   type JellyfishOptions,
   type SpecimenOptions,
 } from './recipes.js';
+
+// Lighting helpers
+export {
+  calculateIllumination,
+  calculateDirectionalIllumination,
+  drawPlayerLight,
+  drawOrganicTexture,
+  drawCaustics,
+} from './lighting.js';
+
+// Eye system
+export {
+  createEye,
+  updateEye,
+  drawEye,
+  createEyes,
+  updateEyes,
+  drawEyes,
+  type Eye,
+  type EyeOptions,
+} from './eyes.js';

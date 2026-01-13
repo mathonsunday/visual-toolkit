@@ -1,6 +1,6 @@
 {
   "name": "visual-toolkit",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Visual effects library encoding premium deep-sea aesthetics",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
