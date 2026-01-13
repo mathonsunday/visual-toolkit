@@ -53,7 +53,7 @@ import { timing } from 'visual-toolkit';
 // Timing multipliers (applied to frame counter ~16/frame):
 timing.glacial  // 0.0008 - ROV rotation, leviathan approach
 timing.verySlow // 0.001  - gentle drift
-timing.slow     // 0.002  - light pulse, tendril movement
+timing.slow     // 0.002  - light pulse, creature movement
 timing.medium   // 0.003  - bio-pulse
 timing.fast     // 0.005  - flee behavior
 ```
@@ -586,90 +586,15 @@ Eyes automatically:
 
 ---
 
-## Tendrils
+## Note: Tendrils Removed
 
-Organic tendrils that reach toward light with proper bezier curves, tapering, and multi-layer flesh rendering.
+Tendril support (`createTendril`, `updateTendril`, `drawTendril`, etc.) was removed from the library due to fundamental challenges with creating convincing appendage behavior:
 
-### CRITICAL: Tendrils Are Appendages
+- **Disembodiment problem**: Even with reach limits and base mass rendering, tendrils often looked like floating worms rather than attached appendages
+- **Synchronization issues**: Multiple tendrils reacting to the same light source moved identically, lacking independent behavior
+- **Visual quality**: Despite bezier curves and multi-layer rendering, results often looked artificial compared to simpler approaches
 
-A tendril must be **attached to something**. If it just floats in the middle of the screen, it looks like a disembodied worm.
-
-**Rules:**
-1. Origins should be **at or beyond the edge** of the canvas
-2. **maxReachRatio** should be ≤0.5 (tendrils never reach more than 50% toward target)
-3. Use **drawBaseMass** to show what the tendril is attached to
-
-### Create from Edges
-
-```typescript
-import { createEdgeTendrils, updateTendril, drawTendrils } from 'visual-toolkit';
-
-// Spawn from edges (origins are off-screen)
-const tendrils = createEdgeTendrils(12, canvas.width, canvas.height, {
-  edges: ['left', 'right', 'bottom'],  // Which edges
-  thickness: [4, 8],                    // Random range
-  segments: 12,
-});
-```
-
-### Update with Reach Limits
-
-```typescript
-// CRITICAL: maxReachRatio prevents disembodied look
-updateTendril(tendril, mouseX, mouseY, frameCount, {
-  maxReachRatio: 0.5,     // Never extend more than 50% toward target
-  maxReachPixels: 250,    // Absolute limit
-  recoilFactor: 0.8,      // Reduce when light moves fast
-});
-```
-
-### Draw with Base Mass
-
-```typescript
-drawTendril(ctx, tendril, {
-  palette: 'flesh',       // 'flesh' | 'abyssal' | 'biolum' | 'dark'
-  drawBaseMass: true,     // Shows what it's attached to!
-  baseMassRadius: 80,     // Size of the dark blob at origin
-  taperRatio: 0.15,       // How thin the tip is vs base
-  waviness: 3,            // Extra organic waviness
-  illumination: 0.5,      // 0-1, brightens when lit
-  time: frameCount,
-});
-```
-
-### What Makes It Organic
-
-| Feature | Implementation |
-|---------|----------------|
-| **Bezier curves** | Catmull-Rom interpolation between segments |
-| **Tapering** | Thickness: base → tip with ease-in curve |
-| **Multi-layer** | Shadow (offset) → Body → Mid → Highlight → Specular |
-| **Bulge** | Slight thickness increase in middle (`sin(t * PI)`) |
-| **Waviness** | Perpendicular displacement using sin waves |
-
-### Batch Rendering
-
-```typescript
-import { drawTendrils } from 'visual-toolkit';
-
-// Draws with proper layering (far ones first)
-drawTendrils(ctx, tendrilArray, {
-  palette: 'flesh',
-  lightX: mouseX,
-  lightY: mouseY,
-  lightRadius: 200,
-  time: frameCount,
-});
-```
-
-### Tendril Palettes
-
-| Palette | Description |
-|---------|-------------|
-| `flesh` | Dark with reddish undertones (default) |
-| `abyssal` | Blue-gray deep-sea creature |
-| `biolum` | Subtle cyan glow hints |
-| `dark` | Barely visible, for background tendrils |
+**Alternative approach**: For creature appendages, consider custom creature shapes (like jellyfish bells with tentacles) rather than generic tendril physics.
 
 ---
 
@@ -805,6 +730,60 @@ When you provide `lightX` and `lightY`, the surface:
 - Shows highlights where light hits
 - Has subsurface scattering for fleshy/membranous types (warm glow)
 - Reveals texture without creating "hole" artifacts
+
+---
+
+## Performance Considerations
+
+### Shadow Blur
+
+`ctx.shadowBlur` is expensive. Recommended limits:
+
+- **6-12px** for most shadows
+- **Avoid** blur > 20px unless necessary
+- Consider using offset shadows without blur for better performance
+
+### Segment Counts
+
+Fewer segments perform better:
+
+- **8-12 segments** for organic shapes (tendrils, creatures)
+- **Avoid** 20+ segments unless detail is critical
+- Each segment adds draw calls
+
+### Light Layers
+
+Multiple light layers can be costly:
+
+- **1-2 layers** recommended for most scenes
+- Each additional layer adds full-screen gradient operations
+- Consider caching static light layers to offscreen canvas
+
+### Organic Surface Caching
+
+The per-pixel noise in `drawOrganicSurface` is expensive. For animated scenes:
+
+```typescript
+// Cache once
+const offscreen = document.createElement('canvas');
+offscreen.width = width; offscreen.height = height;
+drawOrganicSurface(offscreen.getContext('2d'), width, height, { 
+  preset: 'visible',
+  type: 'fleshy',
+  time: 0,  // static base
+});
+
+// In render loop - reuse cached base
+ctx.drawImage(offscreen, 0, 0);
+// Then draw dynamic elements (light response, eyes, seekers)
+```
+
+### General Tips
+
+- **Batch operations**: Draw similar elements together (e.g., all seekers, then all particles)
+- **Cull off-screen**: Skip rendering elements outside viewport
+- **Reduce gradients**: Prefer solid colors where possible
+- **Limit particles**: 50-100 particles perform well; 500+ may cause issues
 
 ---
 

@@ -24,13 +24,6 @@ export {
   bob,
   pulse,
   waver,
-  // Tendrils
-  createTendril,
-  createEdgeTendrils,
-  updateTendril,
-  drawTendril,
-  drawTendrils,
-  tendrilPalettes,
   // Seekers
   createSeeker,
   updateSeeker,
@@ -44,12 +37,6 @@ export {
   cssTimings,
   staggerDelay,
   // Types
-  type Tendril,
-  type TendrilSegment,
-  type TendrilPalette,
-  type TendrilPaletteType,
-  type TendrilDrawOptions,
-  type TendrilUpdateOptions,
   type Seeker,
   type SwarmOptions,
 } from './motion.js';
