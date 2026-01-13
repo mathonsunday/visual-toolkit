@@ -586,6 +586,70 @@ Eyes automatically:
 
 ---
 
+## Tendrils
+
+Organic tendrils that reach toward light with proper bezier curves, tapering, and multi-layer flesh rendering.
+
+### Create & Update
+
+```typescript
+import { createTendril, updateTendril, drawTendril } from 'visual-toolkit';
+
+// Create from wall edge
+const tendril = createTendril(0, 300, 12, 6); // x, y, segments, thickness
+
+// In update loop - physics
+updateTendril(tendril, mouseX, mouseY, frameCount, recoilFactor);
+```
+
+### Draw with Organic Rendering
+
+```typescript
+drawTendril(ctx, tendril, {
+  palette: 'flesh',       // 'flesh' | 'abyssal' | 'biolum' | 'dark'
+  taperRatio: 0.15,       // How thin the tip is vs base
+  waviness: 3,            // Extra organic waviness
+  illumination: 0.5,      // 0-1, brightens when lit
+  time: frameCount,       // For organic variation
+});
+```
+
+### What Makes It Organic
+
+| Feature | Implementation |
+|---------|----------------|
+| **Bezier curves** | Catmull-Rom interpolation between segments |
+| **Tapering** | Thickness: base → tip with ease-in curve |
+| **Multi-layer** | Shadow (offset) → Body → Mid → Highlight → Specular |
+| **Bulge** | Slight thickness increase in middle (`sin(t * PI)`) |
+| **Waviness** | Perpendicular displacement using sin waves |
+
+### Batch Rendering
+
+```typescript
+import { drawTendrils } from 'visual-toolkit';
+
+// Draws with proper layering (far ones first)
+drawTendrils(ctx, tendrilArray, {
+  palette: 'flesh',
+  lightX: mouseX,
+  lightY: mouseY,
+  lightRadius: 200,
+  time: frameCount,
+});
+```
+
+### Tendril Palettes
+
+| Palette | Description |
+|---------|-------------|
+| `flesh` | Dark with reddish undertones (default) |
+| `abyssal` | Blue-gray deep-sea creature |
+| `biolum` | Subtle cyan glow hints |
+| `dark` | Barely visible, for background tendrils |
+
+---
+
 ## Seeker Swarms
 
 For scenes with many bioluminescent creatures.

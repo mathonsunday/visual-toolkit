@@ -117,7 +117,12 @@ export interface Tendril {
   targetY: number;
   speed: number;
   thickness: number;
+  /** Unique ID for consistent waviness patterns */
+  id: number;
 }
+
+// Counter for unique tendril IDs
+let tendrilIdCounter = 0;
 
 /**
  * Create a tendril that reaches from an edge toward a target
@@ -125,7 +130,8 @@ export interface Tendril {
 export function createTendril(
   startX: number,
   startY: number,
-  segmentCount = 12
+  segmentCount = 12,
+  thickness?: number
 ): Tendril {
   return {
     startX,
@@ -134,7 +140,8 @@ export function createTendril(
     targetX: startX,
     targetY: startY,
     speed: 0.02 + Math.random() * 0.03,
-    thickness: 3 + Math.random() * 5,
+    thickness: thickness ?? (3 + Math.random() * 5),
+    id: tendrilIdCounter++,
   };
 }
 
@@ -179,6 +186,283 @@ export function updateTendril(
     const wave = waver(time, i);
     curr.x += wave.x;
     curr.y += wave.y;
+  }
+}
+
+// ============================================
+// TENDRIL DRAWING (organic rendering)
+// ============================================
+
+export interface TendrilPalette {
+  shadow: { r: number; g: number; b: number };
+  base: { r: number; g: number; b: number };
+  mid: { r: number; g: number; b: number };
+  highlight: { r: number; g: number; b: number };
+}
+
+export const tendrilPalettes: Record<string, TendrilPalette> = {
+  /** Default flesh - dark with reddish undertones */
+  flesh: {
+    shadow: { r: 15, g: 8, b: 12 },
+    base: { r: 35, g: 20, b: 28 },
+    mid: { r: 55, g: 35, b: 42 },
+    highlight: { r: 85, g: 55, b: 60 },
+  },
+  
+  /** Abyssal - blue-gray deep-sea creature */
+  abyssal: {
+    shadow: { r: 10, g: 15, b: 22 },
+    base: { r: 25, g: 35, b: 48 },
+    mid: { r: 40, g: 55, b: 70 },
+    highlight: { r: 60, g: 80, b: 100 },
+  },
+  
+  /** Bioluminescent - subtle cyan glow */
+  biolum: {
+    shadow: { r: 12, g: 18, b: 22 },
+    base: { r: 20, g: 40, b: 45 },
+    mid: { r: 35, g: 65, b: 70 },
+    highlight: { r: 60, g: 120, b: 130 },
+  },
+  
+  /** Dark - barely visible, for background tendrils */
+  dark: {
+    shadow: { r: 8, g: 6, b: 10 },
+    base: { r: 18, g: 14, b: 20 },
+    mid: { r: 28, g: 22, b: 30 },
+    highlight: { r: 40, g: 32, b: 42 },
+  },
+};
+
+export type TendrilPaletteType = keyof typeof tendrilPalettes;
+
+export interface TendrilDrawOptions {
+  /** Color palette (default: 'flesh') */
+  palette?: TendrilPaletteType | TendrilPalette;
+  
+  /** Taper ratio - how thin the tip is vs base (default: 0.15) */
+  taperRatio?: number;
+  
+  /** Additional waviness amplitude (default: 0) */
+  waviness?: number;
+  
+  /** Current time for organic variation (optional) */
+  time?: number;
+  
+  /** Whether to draw in "lit" mode - brighter when light is nearby */
+  illumination?: number;
+}
+
+/**
+ * Draw a tendril with ORGANIC rendering:
+ * - Bezier curves between segments (smooth flow)
+ * - Tapering from base to tip
+ * - Multi-layer rendering (shadow → body → highlight)
+ * - Flesh-like gradient coloring
+ * 
+ * @example
+ * // Update physics
+ * updateTendril(tendril, mouseX, mouseY, frameCount, recoilFactor);
+ * 
+ * // Draw with organic rendering
+ * drawTendril(ctx, tendril, {
+ *   palette: 'flesh',
+ *   illumination: calculateIllumination(lightX, lightY, tendril.startX, tendril.startY, 200),
+ *   time: frameCount,
+ * });
+ */
+export function drawTendril(
+  ctx: CanvasRenderingContext2D,
+  tendril: Tendril,
+  options: TendrilDrawOptions = {}
+): void {
+  const {
+    palette = 'flesh',
+    taperRatio = 0.15,
+    waviness = 0,
+    time = 0,
+    illumination = 0,
+  } = options;
+
+  const colors = typeof palette === 'string' ? tendrilPalettes[palette] : palette;
+  if (!colors) return;
+
+  const segments = tendril.segments;
+  if (segments.length < 2) return;
+
+  // Build the path with bezier curves
+  // First, we need the full path to create offset versions
+  const points = buildTendrilPath(tendril, time, waviness);
+  if (points.length < 2) return;
+
+  // Calculate thickness at each point (tapering)
+  const baseThickness = tendril.thickness;
+  const thicknesses = points.map((_, i) => {
+    const t = i / (points.length - 1);
+    // Smooth taper using ease-in curve
+    const taper = 1 - Math.pow(t, 0.7) * (1 - taperRatio);
+    // Add slight bulge in middle for organic feel
+    const bulge = Math.sin(t * Math.PI) * 0.15;
+    return baseThickness * taper * (1 + bulge);
+  });
+
+  // Illumination boost
+  const litBoost = illumination * 0.4;
+
+  // LAYER 1: Shadow (offset down-right)
+  drawTendrilLayer(ctx, points, thicknesses, colors.shadow, 2, 1.3, 0.5);
+
+  // LAYER 2: Base body
+  drawTendrilLayer(ctx, points, thicknesses, colors.base, 0, 1, 0.9 + litBoost * 0.1);
+
+  // LAYER 3: Mid tone (gradient across width effect via offset)
+  drawTendrilLayer(ctx, points, thicknesses, colors.mid, -0.5, 0.7, 0.5 + litBoost * 0.2);
+
+  // LAYER 4: Highlight edge (top-left)
+  drawTendrilLayer(ctx, points, thicknesses, colors.highlight, -1, 0.35, 0.3 + litBoost * 0.3);
+
+  // LAYER 5: Specular highlight when illuminated
+  if (illumination > 0.3) {
+    const specular = { r: colors.highlight.r + 40, g: colors.highlight.g + 35, b: colors.highlight.b + 30 };
+    drawTendrilLayer(ctx, points, thicknesses, specular, -1.5, 0.15, (illumination - 0.3) * 0.6);
+  }
+}
+
+/**
+ * Build smooth bezier path through tendril segments
+ */
+function buildTendrilPath(
+  tendril: Tendril,
+  time: number,
+  extraWaviness: number
+): Array<{ x: number; y: number }> {
+  const segments = tendril.segments;
+  const points: Array<{ x: number; y: number }> = [];
+  
+  // Start at anchor point
+  points.push({ x: tendril.startX, y: tendril.startY });
+  
+  // Subdivide bezier curves for smooth path
+  for (let i = 0; i < segments.length; i++) {
+    const p0 = i === 0 ? { x: tendril.startX, y: tendril.startY } : segments[i - 1];
+    const p1 = segments[i];
+    const p2 = segments[Math.min(i + 1, segments.length - 1)];
+    const p3 = segments[Math.min(i + 2, segments.length - 1)];
+    
+    // Add extra organic waviness perpendicular to direction
+    let waveX = 0, waveY = 0;
+    if (extraWaviness > 0) {
+      const dx = p2.x - p0.x;
+      const dy = p2.y - p0.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const perpX = -dy / len;
+      const perpY = dx / len;
+      const wave = Math.sin(time * timing.slow + i * 0.8 + tendril.id * 0.5) * extraWaviness;
+      waveX = perpX * wave;
+      waveY = perpY * wave;
+    }
+    
+    // Catmull-Rom interpolation for smooth curve
+    for (let t = 0; t <= 1; t += 0.25) {
+      const tt = t * t;
+      const ttt = tt * t;
+      
+      const q0 = -ttt + 2 * tt - t;
+      const q1 = 3 * ttt - 5 * tt + 2;
+      const q2 = -3 * ttt + 4 * tt + t;
+      const q3 = ttt - tt;
+      
+      const x = 0.5 * (p0.x * q0 + p1.x * q1 + p2.x * q2 + p3.x * q3) + waveX * (1 - t);
+      const y = 0.5 * (p0.y * q0 + p1.y * q1 + p2.y * q2 + p3.y * q3) + waveY * (1 - t);
+      
+      // Avoid duplicates
+      const last = points[points.length - 1];
+      if (Math.abs(x - last.x) > 0.5 || Math.abs(y - last.y) > 0.5) {
+        points.push({ x, y });
+      }
+    }
+  }
+  
+  return points;
+}
+
+/**
+ * Draw a single layer of the tendril
+ */
+function drawTendrilLayer(
+  ctx: CanvasRenderingContext2D,
+  points: Array<{ x: number; y: number }>,
+  thicknesses: number[],
+  color: { r: number; g: number; b: number },
+  offset: number,
+  thicknessScale: number,
+  alpha: number
+): void {
+  if (points.length < 2 || alpha <= 0) return;
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+
+  // Draw segments with varying thickness
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    
+    // Calculate perpendicular for offset
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const perpX = (-dy / len) * offset;
+    const perpY = (dx / len) * offset;
+    
+    // Interpolated thickness
+    const t1 = thicknesses[Math.min(i, thicknesses.length - 1)] * thicknessScale;
+    const t2 = thicknesses[Math.min(i + 1, thicknesses.length - 1)] * thicknessScale;
+    const avgThickness = (t1 + t2) / 2;
+    
+    ctx.lineWidth = avgThickness;
+    ctx.beginPath();
+    ctx.moveTo(p1.x + perpX, p1.y + perpY);
+    ctx.lineTo(p2.x + perpX, p2.y + perpY);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Draw multiple tendrils with proper layering (far ones first)
+ */
+export function drawTendrils(
+  ctx: CanvasRenderingContext2D,
+  tendrils: Tendril[],
+  options: TendrilDrawOptions & {
+    lightX?: number;
+    lightY?: number;
+    lightRadius?: number;
+  } = {}
+): void {
+  const { lightX, lightY, lightRadius = 200, ...drawOptions } = options;
+  
+  // Sort by distance from light (furthest first for proper layering)
+  const sorted = [...tendrils].sort((a, b) => {
+    if (lightX === undefined || lightY === undefined) return 0;
+    const distA = Math.sqrt((a.startX - lightX) ** 2 + (a.startY - lightY) ** 2);
+    const distB = Math.sqrt((b.startX - lightX) ** 2 + (b.startY - lightY) ** 2);
+    return distB - distA;
+  });
+  
+  for (const tendril of sorted) {
+    // Calculate illumination if light position provided
+    let illumination = drawOptions.illumination ?? 0;
+    if (lightX !== undefined && lightY !== undefined) {
+      // Use the tip of the tendril for illumination calculation
+      const tipX = tendril.segments[0]?.x ?? tendril.startX;
+      const tipY = tendril.segments[0]?.y ?? tendril.startY;
+      const dist = Math.sqrt((tipX - lightX) ** 2 + (tipY - lightY) ** 2);
+      illumination = dist < lightRadius ? Math.pow(1 - dist / lightRadius, 2) : 0;
+    }
+    
+    drawTendril(ctx, tendril, { ...drawOptions, illumination });
   }
 }
 

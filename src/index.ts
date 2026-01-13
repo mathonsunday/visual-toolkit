@@ -24,8 +24,13 @@ export {
   bob,
   pulse,
   waver,
+  // Tendrils
   createTendril,
   updateTendril,
+  drawTendril,
+  drawTendrils,
+  tendrilPalettes,
+  // Seekers
   createSeeker,
   updateSeeker,
   createSeekerSwarm,
@@ -34,10 +39,15 @@ export {
   drawBiolumGlow,
   drawSeeker,
   drawSeekerSwarm,
+  // CSS
   cssTimings,
   staggerDelay,
+  // Types
   type Tendril,
   type TendrilSegment,
+  type TendrilPalette,
+  type TendrilPaletteType,
+  type TendrilDrawOptions,
   type Seeker,
   type SwarmOptions,
 } from './motion.js';
