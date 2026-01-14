@@ -16,16 +16,19 @@
 
 import { ShadowsScene } from './shadows';
 import { SeekersScene } from './seekers';
+import { GiantSquidScene } from './giant-squid';
 
 // Export scene instances
 export const shadows = new ShadowsScene();
 export const seekers = new SeekersScene();
+export const giantSquid = new GiantSquidScene();
 
 // Export all scenes as a collection
 export const deepSea = {
   shadows,
   seekers,
+  giantSquid,
 };
 
 // Export types
-export type { ShadowsScene, SeekersScene };
+export type { ShadowsScene, SeekersScene, GiantSquidScene };
