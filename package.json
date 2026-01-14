@@ -1,6 +1,6 @@
 {
   "name": "visual-toolkit",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "Visual effects library encoding premium deep-sea aesthetics",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,12 @@
     "bundle": "esbuild src/index.ts --bundle --format=iife --global-name=VisualToolkit --outfile=dist/visual-toolkit.min.js --minify",
     "dev": "tsc --watch"
   },
-  "keywords": ["canvas", "animation", "deep-sea", "visual-effects"],
+  "keywords": [
+    "canvas",
+    "animation",
+    "deep-sea",
+    "visual-effects"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
