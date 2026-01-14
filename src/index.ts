@@ -101,6 +101,18 @@ export {
 } from './core/helpers.js';
 
 // ============================================
+// CANVAS SCENES
+// ============================================
+
+export {
+  scenes,
+  type BaseCanvasScene,
+  type CanvasScene,
+  type SceneConfig,
+  type CursorPos,
+} from './scenes/index.js';
+
+// ============================================
 // THEME SYSTEM
 // ============================================
 

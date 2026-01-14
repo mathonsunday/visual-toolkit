@@ -8,7 +8,14 @@
   "scripts": {
     "build": "tsc && npm run bundle",
     "bundle": "esbuild src/index.ts --bundle --format=iife --global-name=VisualToolkit --outfile=dist/visual-toolkit.min.js --minify",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build && npm run test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:ci": "vitest run --reporter=verbose --coverage",
+    "prepare": "husky install"
   },
   "keywords": [
     "canvas",
@@ -18,7 +25,17 @@
   ],
   "author": "",
   "license": "ISC",
+  "lint-staged": {
+    "*.ts": "npm run test -- --run --related"
+  },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@types/jsdom": "^27.0.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "happy-dom": "^20.1.0",
+    "husky": "^9.0.0",
+    "jsdom": "^27.4.0",
+    "lint-staged": "^15.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.17"
   }
 }
