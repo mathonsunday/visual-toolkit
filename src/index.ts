@@ -115,6 +115,7 @@ export {
 // Import themes to auto-register them
 import './themes/deepSea/index.js';
 import './themes/livingOs/index.js';
+import './themes/garden/index.js';
 
 // ============================================
 // BACKWARD COMPATIBILITY

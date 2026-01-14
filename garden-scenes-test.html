@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garden Viewer Window Scenes Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0f0f0f;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .header p {
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .controls {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .control-group input {
+      padding: 8px;
+      background: #262626;
+      border: 1px solid #404040;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .control-group button {
+      padding: 10px;
+      background: #2a7f62;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .control-group button:hover {
+      background: #23664f;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 1200px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .scene-container {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .scene-header {
+      background: #262626;
+      padding: 15px;
+      border-bottom: 1px solid #333;
+    }
+
+    .scene-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+
+    .scene-header p {
+      font-size: 12px;
+      color: #999;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 400px;
+      background: #000;
+    }
+
+    .scene-footer {
+      padding: 10px 15px;
+      border-top: 1px solid #333;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .fps {
+      color: #2a7f62;
+      font-weight: 600;
+    }
+
+    .info-box {
+      background: #1a1a1a;
+      border-left: 3px solid #2a7f62;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #ccc;
+    }
+
+    .info-box strong {
+      color: #2a7f62;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🌿 Garden Viewer Window Scenes</h1>
+    <p>Four botanical field recording perspectives for Living OS Growth Stage 0</p>
+  </div>
+
+  <div class="info-box">
+    <strong>About these scenes:</strong> Each canvas represents a different way of viewing garden
+    environments - like looking through a researcher's camera at botanical specimens. Use the
+    controls below to test different parameters.
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Time Multiplier</label>
+      <input type="range" id="timeMultiplier" min="0.1" max="3" step="0.1" value="1" />
+      <span style="font-size: 12px; color: #777" id="timeMultiplierDisplay">1.0x</span>
+    </div>
+
+    <div class="control-group">
+      <label>Growth Level</label>
+      <input type="range" id="growthLevel" min="0" max="100" step="10" value="0" />
+      <span style="font-size: 12px; color: #777" id="growthLevelDisplay">0</span>
+    </div>
+
+    <div class="control-group">
+      <label>Intensity</label>
+      <input type="range" id="intensity" min="0.3" max="1.5" step="0.1" value="1" />
+      <span style="font-size: 12px; color: #777" id="intensityDisplay">1.0</span>
+    </div>
+
+    <div class="control-group">
+      <button onclick="toggleAnimation()">
+        <span id="toggleText">⏸ Pause</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="scene-container">
+      <div class="scene-header">
+        <h3>Scene 1: Soft Garden Window</h3>
+        <p>Peaceful sunlit pollen in warm ambient air</p>
+      </div>
+      <canvas id="scene1"></canvas>
+      <div class="scene-footer">
+        <span class="fps" id="fps1">60 fps</span> · Organic, glacial pollen drift
+      </div>
+    </div>
+
+    <div class="scene-container">
+      <div class="scene-header">
+        <h3>Scene 2: Terrarium View</h3>
+        <p>Layered botanical specimen study with depth</p>
+      </div>
+      <canvas id="scene2"></canvas>
+      <div class="scene-footer">
+        <span class="fps" id="fps2">60 fps</span> · Multi-layer "looking into" perspective
+      </div>
+    </div>
+
+    <div class="scene-container">
+      <div class="scene-header">
+        <h3>Scene 3: Garden Through Glass</h3>
+        <p>Muted garden viewed through frosted barrier</p>
+      </div>
+      <canvas id="scene3"></canvas>
+      <div class="scene-footer">
+        <span class="fps" id="fps3">60 fps</span> · Contemplative distance and observation
+      </div>
+    </div>
+
+    <div class="scene-container">
+      <div class="scene-header">
+        <h3>Scene 4: Overgrown Camera</h3>
+        <p>Wild plant growth reclaiming the viewport</p>
+      </div>
+      <canvas id="scene4"></canvas>
+      <div class="scene-footer">
+        <span class="fps" id="fps4">60 fps</span> · Dense, chaotic nature abundance
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top: 30px">
+    <strong>Craftsmanship notes:</strong> All particle systems feature <strong>varied sizes,
+      speeds, and opacities</strong> (never uniform). Animations use slow, glacial timing
+    (0.0002-0.01 range) for premium, organic feel. Layered gradients and depth effects create
+    atmospheric perspective.
+  </div>
+
+  <script src="./dist/visual-toolkit.min.js"></script>
+  <script>
+    const { themes } = VisualToolkit;
+    const garden = themes.garden.recipes;
+
+    // Setup canvases and contexts
+    const sceneConfigs = [
+      { id: 'scene1', name: 'Soft Garden', func: garden.drawSoftGardenWindow },
+      { id: 'scene2', name: 'Terrarium', func: garden.drawTerrariumView },
+      { id: 'scene3', name: 'Garden Window', func: garden.drawGardenThroughGlass },
+      { id: 'scene4', name: 'Overgrown', func: garden.drawOvergrownCamera },
+    ];
+
+    const canvases = sceneConfigs.map((config) => {
+      const canvas = document.getElementById(config.id);
+      const ctx = canvas.getContext('2d');
+      canvas.width = 800;
+      canvas.height = 400;
+      return { canvas, ctx, ...config };
+    });
+
+    // Control variables
+    let frameCount = 0;
+    let isAnimating = true;
+    let timeMultiplier = 1.0;
+    let growthLevel = 0;
+    let intensity = 1.0;
+
+    // FPS tracking
+    const fpsTrackers = {
+      scene1: { lastTime: performance.now(), frames: 0 },
+      scene2: { lastTime: performance.now(), frames: 0 },
+      scene3: { lastTime: performance.now(), frames: 0 },
+      scene4: { lastTime: performance.now(), frames: 0 },
+    };
+
+    function updateFPS(key) {
+      const tracker = fpsTrackers[key];
+      tracker.frames++;
+      const now = performance.now();
+      if (now - tracker.lastTime >= 1000) {
+        document.getElementById('fps' + key.slice(-1)).textContent =
+          tracker.frames.toFixed(0) + ' fps';
+        tracker.frames = 0;
+        tracker.lastTime = now;
+      }
+    }
+
+    function animate() {
+      if (isAnimating) {
+        frameCount++;
+      }
+
+      const time = frameCount * timeMultiplier;
+      const options = { time, growthLevel, intensity };
+
+      // Render each scene
+      canvases.forEach((canvas) => {
+        // Clear canvas
+        canvas.ctx.fillStyle = '#000';
+        canvas.ctx.fillRect(0, 0, canvas.canvas.width, canvas.canvas.height);
+
+        // Draw scene
+        canvas.func(canvas.ctx, 0, 0, canvas.canvas.width, canvas.canvas.height, options);
+
+        // Update FPS
+        updateFPS(canvas.id);
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    // Control event listeners
+    document.getElementById('timeMultiplier').addEventListener('input', (e) => {
+      timeMultiplier = parseFloat(e.target.value);
+      document.getElementById('timeMultiplierDisplay').textContent = timeMultiplier.toFixed(1) + 'x';
+    });
+
+    document.getElementById('growthLevel').addEventListener('input', (e) => {
+      growthLevel = parseInt(e.target.value);
+      document.getElementById('growthLevelDisplay').textContent = growthLevel;
+    });
+
+    document.getElementById('intensity').addEventListener('input', (e) => {
+      intensity = parseFloat(e.target.value);
+      document.getElementById('intensityDisplay').textContent = intensity.toFixed(1);
+    });
+
+    function toggleAnimation() {
+      isAnimating = !isAnimating;
+      document.getElementById('toggleText').textContent = isAnimating ? '⏸ Pause' : '▶ Play';
+    }
+
+    // Start animation loop
+    animate();
+
+    // Log theme info to console
+    console.log('🌿 Garden Theme Loaded!');
+    console.log('Available scenes:', {
+      softGardenWindow: garden.drawSoftGardenWindow,
+      terrariumView: garden.drawTerrariumView,
+      gardenThroughGlass: garden.drawGardenThroughGlass,
+      overgrownCamera: garden.drawOvergrownCamera,
+    });
+    console.log('Theme object:', themes.garden);
+  </script>
+</body>
+</html>
