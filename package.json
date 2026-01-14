@@ -1,6 +1,6 @@
 {
   "name": "visual-toolkit",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Visual effects library encoding premium deep-sea aesthetics",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,8 +14,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "test:ci": "vitest run --reporter=verbose --coverage",
-    "prepare": "husky install"
+    "test:ci": "vitest run --reporter=verbose --coverage"
   },
   "keywords": [
     "canvas",

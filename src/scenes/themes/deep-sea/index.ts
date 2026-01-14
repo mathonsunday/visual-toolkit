@@ -15,14 +15,17 @@
  */
 
 import { ShadowsScene } from './shadows';
+import { SeekersScene } from './seekers';
 
 // Export scene instances
 export const shadows = new ShadowsScene();
+export const seekers = new SeekersScene();
 
 // Export all scenes as a collection
 export const deepSea = {
   shadows,
+  seekers,
 };
 
 // Export types
-export type { ShadowsScene };
+export type { ShadowsScene, SeekersScene };
