@@ -43,20 +43,35 @@ export {
   drawGrowingRoots,
   drawVines,
   drawGrowthIndicator,
+  drawOrganicVine,
+  drawOrganicRoots,
   type GrowthOptions,
   type GrowthIndicatorOptions,
+  type OrganicVineOptions,
+  type OrganicRootOptions,
 } from './growth.js';
 
 export {
   drawLeaf,
   drawLeaves,
+  drawFlower,
   type LeafOptions,
+  type FlowerOptions,
 } from './plants.js';
 
 export {
   drawBarkTexture,
+  drawBarkTextureCached,
   drawOrganicSurface,
+  woodPalettes,
+  getOrCreatePermutation,
+  precomputePermutations,
+  clearPermutationCache,
+  clearTextureCache,
+  getTextureCacheSize,
   type BarkTextureOptions,
+  type WoodPalette,
+  type WoodType,
 } from './textures.js';
 
 export {
@@ -64,6 +79,15 @@ export {
   calculateDrift,
   applySway,
   applyDrift,
+  calculateGrowthProgress,
+  calculateTipGrowthMultiplier,
+  calculatePulse,
+  calculateScalePulse,
+  applyGrowthTiming,
+  GROWTH_TIMING,
   type SwayOptions,
   type DriftOptions,
+  type GrowthAnimationOptions,
+  type PulseOptions,
+  type GrowthTimingPreset,
 } from './motion.js';
