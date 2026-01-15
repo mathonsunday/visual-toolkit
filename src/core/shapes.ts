@@ -49,6 +49,9 @@ export const organicRadii = {
 
 /**
  * Draw panel lines on a surface (ROV style)
+ *
+ * @deprecated Use Scene-First architecture. Pattern A helpers being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
  */
 export function drawPanelLines(
   ctx: CanvasRenderingContext2D,
@@ -73,6 +76,9 @@ export function drawPanelLines(
 
 /**
  * Draw grille/vent pattern (thruster style)
+ *
+ * @deprecated Use Scene-First architecture. Pattern A helpers being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
  */
 export function drawGrille(
   ctx: CanvasRenderingContext2D,

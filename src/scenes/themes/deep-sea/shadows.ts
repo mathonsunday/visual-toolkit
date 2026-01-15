@@ -61,7 +61,15 @@ export class ShadowsScene extends BaseCanvasScene {
     this.startCursorTracking();
 
     // Initialize marine snow particles
-    this.initializeParticles();
+    for (let i = 0; i < 10; i++) {
+      this.particles.push({
+        x: Math.random(),
+        y: Math.random(),
+        size: 0.5 + Math.random() * 1.5,
+        speed: 0.0005 + Math.random() * 0.001,
+        alpha: 0.1 + Math.random() * 0.2,
+      });
+    }
 
     // Initialize shadow creatures
     this.resizeShadows();
@@ -87,41 +95,59 @@ export class ShadowsScene extends BaseCanvasScene {
 
   render(ctx: CanvasRenderingContext2D, deltaTime: number): void {
     const { width, height } = this.getCanvasSize();
+    const cursor = this.getCursorPos();
 
-    // Deep water background - very slight lightening for contrast
+    // Background - deep water gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#020911');
-    bgGrad.addColorStop(0.5, '#010508');
+    bgGrad.addColorStop(0, '#0a0f2e');
+    bgGrad.addColorStop(0.5, '#020810');
     bgGrad.addColorStop(1, '#000305');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Update and draw shadows
+    // Update and draw shadows (scene-specific)
     this.updateAndDrawShadows(ctx, width, height);
 
-    // Draw light source (cursor) if over canvas
-    this.drawLightSource(ctx, width, height);
-
-    // Draw marine snow
-    this.drawMarineSnow(ctx, width, height);
-
-    // Draw vignette
-    this.drawVignette(ctx, width, height);
-
-    this.time += 16; // Approximate 60fps: 1000ms / 60fps ≈ 16.67ms
-  }
-
-  private initializeParticles(): void {
-    this.particles = [];
-    for (let i = 0; i < 10; i++) {
-      this.particles.push({
-        x: Math.random(),
-        y: Math.random(),
-        size: 0.5 + Math.random() * 1.5,
-        speed: 0.0005 + Math.random() * 0.001,
-        alpha: 0.1 + Math.random() * 0.2
-      });
+    // Player light - simple radial glow
+    if (cursor.isOver) {
+      const lightGrad = ctx.createRadialGradient(
+        cursor.x, cursor.y, 0,
+        cursor.x, cursor.y, 200
+      );
+      lightGrad.addColorStop(0, 'rgba(200, 240, 255, 0.3)');
+      lightGrad.addColorStop(0.5, 'rgba(100, 180, 220, 0.1)');
+      lightGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = lightGrad;
+      ctx.beginPath();
+      ctx.arc(cursor.x, cursor.y, 200, 0, Math.PI * 2);
+      ctx.fill();
     }
+
+    // Marine snow particles
+    for (const p of this.particles) {
+      p.y += p.speed;
+      p.x += Math.sin(this.time * 0.001 + p.y * 5) * 0.0003;
+      if (p.y > 1.05) {
+        p.y = -0.05;
+        p.x = Math.random();
+      }
+      ctx.fillStyle = `rgba(150, 180, 200, ${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x * width, p.y * height, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Vignette edge darkening
+    const vigGrad = ctx.createRadialGradient(
+      width / 2, height / 2, height * 0.25,
+      width / 2, height / 2, height * 0.85
+    );
+    vigGrad.addColorStop(0, 'transparent');
+    vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    this.time += deltaTime;
   }
 
   private resizeShadows(): void {
@@ -150,6 +176,28 @@ export class ShadowsScene extends BaseCanvasScene {
 
     this.lastW = width;
     this.lastH = height;
+  }
+
+  private calculateIllumination(
+    shadowX: number,
+    shadowY: number,
+    cursor: CursorPos
+  ): number {
+    if (!cursor.isOver) {
+      return 0;
+    }
+
+    const dx = shadowX - cursor.x;
+    const dy = shadowY - cursor.y;
+    const distToLightSq = dx * dx + dy * dy;
+    const lightRadius = 200;
+    const lightRadiusSq = lightRadius * lightRadius;
+
+    // Softer, more gradual falloff
+    if (distToLightSq < lightRadiusSq) {
+      return Math.pow(1 - Math.sqrt(distToLightSq) / lightRadius, 2.5);
+    }
+    return 0;
   }
 
   private updateAndDrawShadows(
@@ -283,113 +331,6 @@ export class ShadowsScene extends BaseCanvasScene {
     }
   }
 
-  private calculateIllumination(
-    shadowX: number,
-    shadowY: number,
-    cursor: CursorPos
-  ): number {
-    if (!cursor.isOver) {
-      return 0;
-    }
-
-    const dx = shadowX - cursor.x;
-    const dy = shadowY - cursor.y;
-    const distToLightSq = dx * dx + dy * dy;
-    const lightRadius = 200;
-    const lightRadiusSq = lightRadius * lightRadius;
-
-    // Softer, more gradual falloff
-    if (distToLightSq < lightRadiusSq) {
-      return Math.pow(1 - Math.sqrt(distToLightSq) / lightRadius, 2.5);
-    }
-    return 0;
-  }
-
-  private drawLightSource(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number
-  ): void {
-    const cursor = this.getCursorPos();
-
-    if (!cursor.isOver) {
-      return;
-    }
-
-    // Draw light source (ROV spotlight)
-    const grad = ctx.createRadialGradient(
-      cursor.x,
-      cursor.y,
-      0,
-      cursor.x,
-      cursor.y,
-      200
-    );
-    grad.addColorStop(0, 'rgba(200, 240, 255, 0.15)');
-    grad.addColorStop(0.5, 'rgba(150, 200, 255, 0.08)');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(cursor.x, cursor.y, 200, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bright core
-    const core = ctx.createRadialGradient(
-      cursor.x,
-      cursor.y,
-      0,
-      cursor.x,
-      cursor.y,
-      16
-    );
-    core.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-    core.addColorStop(0.6, 'rgba(220, 240, 255, 0.5)');
-    core.addColorStop(1, 'transparent');
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(cursor.x, cursor.y, 16, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  private drawMarineSnow(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number
-  ): void {
-    for (const p of this.particles) {
-      p.y += p.speed;
-      p.x += Math.sin(this.time * 0.001 + p.y * 5) * 0.0003;
-
-      if (p.y > 1.05) {
-        p.y = -0.05;
-        p.x = Math.random();
-      }
-
-      ctx.fillStyle = `rgba(150, 180, 200, ${p.alpha})`;
-      ctx.beginPath();
-      ctx.arc(p.x * width, p.y * height, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  private drawVignette(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number
-  ): void {
-    const vignette = ctx.createRadialGradient(
-      width / 2,
-      height / 2,
-      height * 0.25,
-      width / 2,
-      height / 2,
-      height * 0.85
-    );
-    vignette.addColorStop(0, 'transparent');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, width, height);
-  }
 }
 
 // Export instance for convenience

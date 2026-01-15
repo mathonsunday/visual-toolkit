@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Toolkit Scene Gallery - Review & Curation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #0a0e27;
+      color: #e0e0e0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .header {
+      max-width: 1400px;
+      margin: 0 auto 40px;
+      border-bottom: 1px solid #2d5a7b;
+      padding-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #4dd0e1;
+    }
+
+    .header p {
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: 1px solid #2d5a7b;
+      background: #0a0e27;
+      color: #4dd0e1;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #1a2a47;
+      border-color: #4dd0e1;
+    }
+
+    .btn.active {
+      background: #4dd0e1;
+      color: #0a0e27;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .scene-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .scene-card {
+      border: 1px solid #2d5a7b;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0f1426;
+      transition: all 0.3s;
+    }
+
+    .scene-card:hover {
+      border-color: #4dd0e1;
+      box-shadow: 0 0 20px rgba(77, 208, 225, 0.1);
+    }
+
+    .scene-canvas {
+      width: 100%;
+      height: 300px;
+      display: block;
+      background: #010508;
+    }
+
+    .scene-info {
+      padding: 16px;
+      border-top: 1px solid #2d5a7b;
+    }
+
+    .scene-title {
+      font-size: 16px;
+      color: #4dd0e1;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .scene-meta {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .scene-description {
+      font-size: 13px;
+      color: #bbb;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .scene-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .scene-btn {
+      padding: 6px 12px;
+      border: 1px solid #2d5a7b;
+      background: #0a0e27;
+      color: #4dd0e1;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+
+    .scene-btn:hover {
+      background: #1a2a47;
+      border-color: #4dd0e1;
+    }
+
+    .scene-decision {
+      border-top: 1px solid #2d5a7b;
+      padding-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .decision-btn {
+      flex: 1;
+      min-width: 80px;
+      padding: 8px 12px;
+      border: 1px solid #2d5a7b;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .decision-btn.keep {
+      background: #1b5e20;
+      color: #4caf50;
+      border-color: #4caf50;
+    }
+
+    .decision-btn.keep:hover {
+      background: #2e7d32;
+    }
+
+    .decision-btn.remove {
+      background: #5e1b1b;
+      color: #ef5350;
+      border-color: #ef5350;
+    }
+
+    .decision-btn.remove:hover {
+      background: #7d2e2e;
+    }
+
+    .decision-btn.maybe {
+      background: #5e5e1b;
+      color: #fbc02d;
+      border-color: #fbc02d;
+    }
+
+    .decision-btn.maybe:hover {
+      background: #7d7d2e;
+    }
+
+    .scene-decision-status {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .status-keep {
+      background: rgba(76, 175, 80, 0.1);
+      color: #4caf50;
+      border: 1px solid #4caf50;
+    }
+
+    .status-remove {
+      background: rgba(239, 83, 80, 0.1);
+      color: #ef5350;
+      border: 1px solid #ef5350;
+    }
+
+    .status-maybe {
+      background: rgba(251, 192, 45, 0.1);
+      color: #fbc02d;
+      border: 1px solid #fbc02d;
+    }
+
+    .summary {
+      max-width: 1400px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0f1426;
+      border: 1px solid #2d5a7b;
+      border-radius: 8px;
+    }
+
+    .summary h2 {
+      color: #4dd0e1;
+      margin-bottom: 16px;
+      font-size: 18px;
+    }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      padding: 12px;
+      background: #0a0e27;
+      border: 1px solid #2d5a7b;
+      border-radius: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      color: #4dd0e1;
+      font-weight: bold;
+    }
+
+    .decisions-list {
+      font-size: 12px;
+      color: #bbb;
+      line-height: 1.8;
+    }
+
+    .decisions-list.keep {
+      color: #4caf50;
+    }
+
+    .decisions-list.remove {
+      color: #ef5350;
+    }
+
+    .decisions-list.maybe {
+      color: #fbc02d;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-group label {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .hidden-scene {
+      display: none;
+    }
+
+    .notes {
+      margin-top: 12px;
+      padding: 10px;
+      background: #0a0e27;
+      border-left: 2px solid #4dd0e1;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    .notes-title {
+      color: #4dd0e1;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .notes textarea {
+      width: 100%;
+      height: 60px;
+      background: #1a2a47;
+      border: 1px solid #2d5a7b;
+      color: #e0e0e0;
+      padding: 8px;
+      border-radius: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    .export-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #2d5a7b;
+    }
+
+    .export-btn {
+      padding: 10px 20px;
+      background: #1b5e20;
+      color: #4caf50;
+      border: 1px solid #4caf50;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .export-btn:hover {
+      background: #2e7d32;
+    }
+
+    @media (max-width: 768px) {
+      .scene-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎨 Visual Toolkit Scene Gallery</h1>
+    <p>Review all extracted and planned scenes. Decide which to keep, remove, or reconsider.</p>
+
+    <div class="controls">
+      <button class="btn active" onclick="filterScenes('all')">All Scenes</button>
+      <button class="btn" onclick="filterScenes('extracted')">Extracted (5)</button>
+      <button class="btn" onclick="filterScenes('pending')">Pending Migration (1)</button>
+      <button class="btn" onclick="filterScenes('planned')">Planned (0)</button>
+      <div class="filter-group">
+        <label>Status:</label>
+        <button class="btn" onclick="filterStatus('all')">All</button>
+        <button class="btn" onclick="filterStatus('keep')">Keep ✓</button>
+        <button class="btn" onclick="filterStatus('remove')">Remove ✗</button>
+        <button class="btn" onclick="filterStatus('maybe')">Maybe ?</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="scene-grid" id="sceneGrid"></div>
+  </div>
+
+  <div class="summary">
+    <h2>Curation Summary</h2>
+    <div class="summary-stats">
+      <div class="stat">
+        <div class="stat-label">Total Scenes</div>
+        <div class="stat-value" id="totalCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Keeping</div>
+        <div class="stat-value" id="keepCount" style="color: #4caf50;">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Removing</div>
+        <div class="stat-value" id="removeCount" style="color: #ef5350;">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Undecided</div>
+        <div class="stat-value" id="maybeCount" style="color: #fbc02d;">0</div>
+      </div>
+    </div>
+
+    <div class="export-section">
+      <button class="export-btn" onclick="exportDecisions()">📋 Export Decisions</button>
+      <button class="export-btn" onclick="resetAll()">🔄 Reset All</button>
+    </div>
+
+    <div id="decisionsSummary"></div>
+  </div>
+
+  <script src="dist/visual-toolkit.min.js"></script>
+  <script>
+    // Scene definitions
+    const scenes = [
+      {
+        id: 'shadows',
+        name: 'Shadows (Jellyfish)',
+        category: 'extracted',
+        type: 'canvas',
+        sceneClass: 'ShadowsScene',
+        description: 'Graceful jellyfish silhouettes drifting in deep water with organic tentacle animations.',
+        status: 'extracted',
+        file: 'src/scenes/themes/deep-sea/shadows.ts',
+        features: ['Jellyfish animation', 'Silhouettes', 'Organic motion'],
+        notes: 'Core narrative scene - always shows in ROV footage'
+      },
+      {
+        id: 'seekers',
+        name: 'Seekers (Bioluminescent Swarm)',
+        category: 'pending',
+        type: 'canvas',
+        sceneClass: 'SeekersScene',
+        description: 'Cyan/blue bioluminescent organisms with swarm behavior, attracted to cursor light.',
+        status: 'original_monolithic',
+        file: 'narrative-os/frontend/os.js (original code)',
+        features: ['Swarm physics', 'Light attraction', 'Bioluminescent glow'],
+        notes: 'EXTRACTION FAILED - Reverted to original monolithic code in os.js. Not yet migrated to visual-toolkit. Requires Scene-First architecture refactor to extract properly.'
+      },
+      {
+        id: 'giant-squid',
+        name: 'Giant Squid (Tentacle Creature)',
+        category: 'extracted',
+        type: 'canvas',
+        sceneClass: 'GiantSquidScene',
+        description: 'Massive tentacle creature with suckers and sinusoidal animation. Represents the abyss creature.',
+        status: 'extracted',
+        file: 'src/scenes/themes/deep-sea/giant-squid.ts',
+        features: ['Tentacle animation', 'Sucker detail', 'Scale variation'],
+        notes: 'High complexity extraction - working well'
+      },
+      {
+        id: 'rov-exterior',
+        name: 'ROV Exterior (Mechanical POV)',
+        category: 'extracted',
+        type: 'canvas',
+        sceneClass: 'ROVExteriorScene',
+        description: 'Yellow/orange mechanical ROV with thrusters, lights, manipulator arm. Shows vulnerability of the vessel.',
+        status: 'extracted',
+        file: 'src/scenes/themes/deep-sea/rov-exterior.ts',
+        features: ['Mechanical detail', 'Light effects', 'Particle systems'],
+        notes: 'Medium complexity - shows the human element'
+      },
+      {
+        id: 'leviathan',
+        name: 'Leviathan (Giant Eye)',
+        category: 'extracted',
+        type: 'canvas',
+        sceneClass: 'LeviathanScene',
+        description: 'Massive creature eye that tracks cursor, responds to light with pupil dilation and color shifts. Most emotionally intense.',
+        status: 'extracted',
+        file: 'src/scenes/themes/deep-sea/leviathan.ts',
+        features: ['Eye tracking', 'Light response', 'Pupil morphing', 'Creature physics'],
+        notes: 'Very high complexity - core horror element'
+      },
+      {
+        id: 'wall',
+        name: 'Wall (Organic Surface with Eyes)',
+        category: 'extracted',
+        type: 'canvas',
+        sceneClass: 'WallScene',
+        description: 'Living wall with 12 eye-tracking eyes, Bezier vein generation, simplex noise texture. Creates body-horror atmosphere.',
+        status: 'extracted',
+        file: 'src/scenes/themes/deep-sea/wall.ts',
+        features: ['Eye tracking', 'Noise generation', 'Vein animation', 'Organic rendering'],
+        notes: 'Highest complexity (680 LOC) - extremely detailed'
+      }
+    ];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      renderScenes();
+      updateSummary();
+    });
+
+    function renderScenes() {
+      const grid = document.getElementById('sceneGrid');
+      grid.innerHTML = '';
+
+      scenes.forEach(scene => {
+        const card = createSceneCard(scene);
+        grid.appendChild(card);
+      });
+    }
+
+    function createSceneCard(scene) {
+      const card = document.createElement('div');
+      card.className = `scene-card scene-item scene-${scene.category} scene-status-${scene._decision || 'undecided'}`;
+      card.dataset.sceneId = scene.id;
+      card.dataset.category = scene.category;
+      card.dataset.status = scene._decision || 'undecided';
+
+      const decision = scene._decision || 'undecided';
+      const decisionText = decision === 'keep' ? '✓ Keep' : decision === 'remove' ? '✗ Remove' : 'Undecided';
+      const decisionClass = decision === 'keep' ? 'status-keep' : decision === 'remove' ? 'status-remove' : 'status-maybe';
+
+      card.innerHTML = `
+        <canvas class="scene-canvas" id="canvas-${scene.id}"></canvas>
+        <div class="scene-info">
+          <div class="scene-title">${scene.name}</div>
+          <div class="scene-meta">
+            <div><strong>Type:</strong> ${scene.type}</div>
+            <div><strong>Status:</strong> ${scene.status}</div>
+            <div><strong>Category:</strong> ${scene.category}</div>
+            <div><strong>File:</strong> ${scene.file.split('/').pop()}</div>
+          </div>
+          <div class="scene-description">${scene.description}</div>
+
+          <div class="scene-controls">
+            ${scene.features.map(f => `<span class="scene-btn">${f}</span>`).join('')}
+          </div>
+
+          <div class="notes">
+            <div class="notes-title">📝 Notes</div>
+            <div>${scene.notes}</div>
+            <textarea placeholder="Add your thoughts..." id="notes-${scene.id}"></textarea>
+          </div>
+
+          <div class="scene-decision">
+            <button class="decision-btn keep" onclick="setDecision('${scene.id}', 'keep')">✓ Keep</button>
+            <button class="decision-btn maybe" onclick="setDecision('${scene.id}', 'maybe')">? Undecided</button>
+            <button class="decision-btn remove" onclick="setDecision('${scene.id}', 'remove')">✗ Remove</button>
+          </div>
+
+          <div class="scene-decision-status ${decisionClass}" id="status-${scene.id}">
+            ${decisionText}
+          </div>
+        </div>
+      `;
+
+      // Initialize canvas
+      const canvas = card.querySelector(`#canvas-${scene.id}`);
+      initializeSceneCanvas(canvas, scene);
+
+      return card;
+    }
+
+    function initializeSceneCanvas(canvas, scene) {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+
+      // Special handling for Seekers (not yet extracted)
+      if (scene.id === 'seekers') {
+        drawPlaceholder(canvas, scene, 'Not yet extracted - in narrative-os/os.js');
+        return;
+      }
+
+      // Get the scene class from window.VisualToolkit
+      const SceneClass = window.VisualToolkit?.scenes?.deepSea?.[toCamelCase(scene.id)];
+
+      if (SceneClass) {
+        // Initialize the scene
+        SceneClass.init(canvas, { intensity: 0.8, duration: Infinity }).catch(err => {
+          console.warn(`Could not initialize ${scene.name}:`, err);
+          drawPlaceholder(canvas, scene);
+        });
+      } else {
+        drawPlaceholder(canvas, scene);
+      }
+
+      // Handle resize
+      window.addEventListener('resize', () => {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      });
+    }
+
+    function drawPlaceholder(canvas, scene, message) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#010508';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#666';
+      ctx.font = '14px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${scene.name}`, canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillStyle = '#444';
+      ctx.font = '12px JetBrains Mono';
+      ctx.fillText(message || '(Scene not available)', canvas.width / 2, canvas.height / 2 + 10);
+    }
+
+    function toCamelCase(str) {
+      return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+    }
+
+    function setDecision(sceneId, decision) {
+      const scene = scenes.find(s => s.id === sceneId);
+      if (scene) {
+        scene._decision = decision;
+        const card = document.querySelector(`[data-scene-id="${sceneId}"]`);
+        if (card) {
+          card.dataset.status = decision;
+          const statusEl = card.querySelector(`#status-${sceneId}`);
+          const decisionText = decision === 'keep' ? '✓ Keep' : decision === 'remove' ? '✗ Remove' : 'Undecided';
+          const decisionClass = decision === 'keep' ? 'status-keep' : decision === 'remove' ? 'status-remove' : 'status-maybe';
+          statusEl.textContent = decisionText;
+          statusEl.className = `scene-decision-status ${decisionClass}`;
+        }
+        updateSummary();
+        saveDecisions();
+      }
+    }
+
+    function filterScenes(category) {
+      const cards = document.querySelectorAll('.scene-item');
+      cards.forEach(card => {
+        if (category === 'all' || card.dataset.category === category) {
+          card.classList.remove('hidden-scene');
+        } else {
+          card.classList.add('hidden-scene');
+        }
+      });
+
+      // Update filter buttons
+      document.querySelectorAll('.controls .btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function filterStatus(status) {
+      const cards = document.querySelectorAll('.scene-item');
+      cards.forEach(card => {
+        if (status === 'all' || card.dataset.status === status) {
+          card.classList.remove('hidden-scene');
+        } else {
+          card.classList.add('hidden-scene');
+        }
+      });
+    }
+
+    function updateSummary() {
+      const keep = scenes.filter(s => s._decision === 'keep').length;
+      const remove = scenes.filter(s => s._decision === 'remove').length;
+      const maybe = scenes.filter(s => !s._decision || s._decision === 'undecided' || s._decision === 'maybe').length;
+
+      document.getElementById('totalCount').textContent = scenes.length;
+      document.getElementById('keepCount').textContent = keep;
+      document.getElementById('removeCount').textContent = remove;
+      document.getElementById('maybeCount').textContent = maybe;
+
+      const summary = document.getElementById('decisionsSummary');
+      const keeping = scenes.filter(s => s._decision === 'keep');
+      const removing = scenes.filter(s => s._decision === 'remove');
+      const undecided = scenes.filter(s => !s._decision || s._decision === 'undecided' || s._decision === 'maybe');
+
+      let html = '';
+
+      if (keeping.length > 0) {
+        html += `<div class="decisions-list keep" style="margin-bottom: 12px;">
+          <strong>✓ Keeping (${keeping.length}):</strong><br>
+          ${keeping.map(s => `${s.name}`).join('<br>')}
+        </div>`;
+      }
+
+      if (removing.length > 0) {
+        html += `<div class="decisions-list remove" style="margin-bottom: 12px;">
+          <strong>✗ Removing (${removing.length}):</strong><br>
+          ${removing.map(s => `${s.name}`).join('<br>')}
+        </div>`;
+      }
+
+      if (undecided.length > 0) {
+        html += `<div class="decisions-list maybe">
+          <strong>? Undecided (${undecided.length}):</strong><br>
+          ${undecided.map(s => `${s.name}`).join('<br>')}
+        </div>`;
+      }
+
+      if (html) {
+        summary.innerHTML = html;
+      } else {
+        summary.innerHTML = '<p style="color: #999;">No decisions made yet.</p>';
+      }
+    }
+
+    function saveDecisions() {
+      const decisions = {};
+      scenes.forEach(scene => {
+        decisions[scene.id] = {
+          decision: scene._decision || 'undecided',
+          notes: document.getElementById(`notes-${scene.id}`)?.value || ''
+        };
+      });
+      localStorage.setItem('sceneGalleryDecisions', JSON.stringify(decisions));
+    }
+
+    function loadDecisions() {
+      const saved = localStorage.getItem('sceneGalleryDecisions');
+      if (saved) {
+        const decisions = JSON.parse(saved);
+        scenes.forEach(scene => {
+          if (decisions[scene.id]) {
+            scene._decision = decisions[scene.id].decision;
+          }
+        });
+      }
+    }
+
+    function resetAll() {
+      if (confirm('Reset all decisions?')) {
+        scenes.forEach(s => {
+          s._decision = undefined;
+          const notes = document.getElementById(`notes-${s.id}`);
+          if (notes) notes.value = '';
+        });
+        localStorage.removeItem('sceneGalleryDecisions');
+        renderScenes();
+        updateSummary();
+      }
+    }
+
+    function exportDecisions() {
+      const decisions = {};
+      const notes = {};
+
+      scenes.forEach(scene => {
+        decisions[scene.id] = scene._decision || 'undecided';
+        const notesEl = document.getElementById(`notes-${scene.id}`);
+        if (notesEl && notesEl.value) {
+          notes[scene.id] = notesEl.value;
+        }
+      });
+
+      const report = {
+        date: new Date().toISOString(),
+        decisions,
+        notes,
+        summary: {
+          keep: scenes.filter(s => s._decision === 'keep').map(s => s.name),
+          remove: scenes.filter(s => s._decision === 'remove').map(s => s.name),
+          undecided: scenes.filter(s => !s._decision || s._decision === 'undecided' || s._decision === 'maybe').map(s => s.name)
+        }
+      };
+
+      const json = JSON.stringify(report, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scene-curation-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Load saved decisions on startup
+    loadDecisions();
+  </script>
+</body>
+</html>

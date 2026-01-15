@@ -1,282 +1,169 @@
 /**
- * Seekers Scene - Bioluminescent swarm intelligence
+ * Seekers Scene - Bioluminescent seekers attracted to light
  *
- * A dynamic scene featuring a swarm of bioluminescent organisms that
- * respond to cursor (ROV light) position. The seekers exhibit collective
- * behavior, attraction to light, and beautiful glow effects.
+ * A dynamic scene featuring a swarm of small bioluminescent creatures
+ * that are drawn to light sources (like the ROV cursor). The seekers
+ * exhibit realistic behavior: attraction to light, timidity (flee if
+ * light moves too fast), and complex swarming dynamics.
  *
  * Features:
- * - Swarm of 50 bioluminescent creatures
- * - Responsive to cursor (ROV light) position and movement
- * - Individual creature glow based on proximity to light
- * - Center-biased spawning to prevent edge clustering
- * - Marine snow particles for atmosphere
- * - ROV spotlight effect following cursor
- * - Soft vignette edge darkening
+ * - 50 individual seeker creatures with unique properties
+ * - Light-seeking behavior with realistic physics
+ * - Flee behavior when threatened (light moves too fast)
+ * - Orbital nervous behavior when too close to light
+ * - Wandering behavior in darkness
+ * - Bioluminescent glow that pulses with intensity
+ * - Marine snow particle system for atmosphere
+ * - Vignette edge darkening
  */
 
 import { BaseCanvasScene } from '../../base-scene';
-import type { SceneConfig, CursorPos } from '../../types';
-
-interface Seeker {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  brightness: number;
-  bodyHue: number;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  size: number;
-  speed: number;
-  alpha: number;
-}
+import type { SceneConfig } from '../../types';
+import {
+  deepWaterBackground,
+  drawPlayerLight,
+  createMarineSnow,
+  updateMarineSnow,
+  drawMarineSnow,
+  vignette,
+  createSeekerSwarm,
+  updateSeekerSwarm,
+  drawSeekerSwarm,
+  type Particle,
+  type Seeker,
+} from '../../../themes/deepSea/effects.js';
 
 export class SeekersScene extends BaseCanvasScene {
   name = 'Seekers';
-  description = 'Bioluminescent swarm responding to light';
+  description = 'Bioluminescent seekers attracted to light';
+
   defaultConfig: Partial<SceneConfig> = {
-    intensity: 0.7,
+    intensity: 1,
     scale: 1,
-    duration: Infinity
+    duration: Infinity,
   };
+
+  // ============================================
+  // SCENE STATE
+  // ============================================
 
   private seekers: Seeker[] = [];
   private particles: Particle[] = [];
   private time = 0;
+  private lastCursorX = 0;
+  private lastCursorY = 0;
 
+  // ============================================
+  // LIFECYCLE
+  // ============================================
+
+  /**
+   * Initialize scene - called once when scene loads
+   */
   protected async onInit(): Promise<void> {
-    // Enable cursor tracking for light attraction
+    // Enable cursor tracking - seekers respond to light (cursor)
     this.startCursorTracking();
-    this.initializeParticles();
-    this.resizeSeekersSwarm();
-  }
 
-  protected onCanvasResize(): void {
-    const { width, height } = this.getCanvasSize();
-    if (this.seekers.length === 0) {
-      this.resizeSeekersSwarm();
-    }
-  }
-
-  protected onCleanup(): void {
-    // Clear arrays
-    this.seekers = [];
-    this.particles = [];
-  }
-
-  private initializeParticles(): void {
-    this.particles = [];
-    for (let i = 0; i < 30; i++) {
-      this.particles.push({
-        x: Math.random(),
-        y: Math.random(),
-        size: 0.5 + Math.random() * 1.5,
-        speed: 0.0005 + Math.random() * 0.001,
-        alpha: 0.1 + Math.random() * 0.2,
-      });
-    }
-  }
-
-  private resizeSeekersSwarm(): void {
     const { width, height } = this.getCanvasSize();
 
-    // Create swarm with center-biased spawning
-    this.seekers = [];
-    for (let i = 0; i < 50; i++) {
-      // Center-biased spawn using Gaussian-like distribution
-      let angle = Math.random() * Math.PI * 2;
-      let distance = Math.random() * Math.random() * 100; // More center-biased
-      let sx = width / 2 + Math.cos(angle) * distance;
-      let sy = height / 2 + Math.sin(angle) * distance;
+    // Create seeker swarm using shared effect
+    // 50 seekers with center-biased spawn distribution
+    this.seekers = createSeekerSwarm(50, width, height, {
+      spawnBias: 'center',
+      sizeRange: [2, 8],
+      speedRange: [1, 4],
+      hueRange: [180, 220],
+      centerDrift: 0.02, // Prevent edge clustering
+    });
 
-      // Clamp to canvas
-      sx = Math.max(0, Math.min(width, sx));
-      sy = Math.max(0, Math.min(height, sy));
+    // Create marine snow particles using shared effect
+    this.particles = createMarineSnow(10);
 
-      this.seekers.push({
-        x: sx,
-        y: sy,
-        vx: (Math.random() - 0.5) * 2,
-        vy: (Math.random() - 0.5) * 2,
-        size: 3 + Math.random() * 5,
-        brightness: 0.4 + Math.random() * 0.4,
-        bodyHue: 190 + Math.random() * 20 // Cyan hues
-      });
-    }
+    this.lastCursorX = width / 2;
+    this.lastCursorY = height / 2;
   }
 
+  /**
+   * Render - called every frame
+   */
   render(ctx: CanvasRenderingContext2D, deltaTime: number): void {
     const { width, height } = this.getCanvasSize();
     const cursor = this.getCursorPos();
 
-    // Deep water background
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#020810');
-    bgGrad.addColorStop(0.5, '#010508');
-    bgGrad.addColorStop(1, '#000305');
-    ctx.fillStyle = bgGrad;
+    // ============================================
+    // BACKGROUND
+    // ============================================
+
+    // Use shared deep water background
+    ctx.fillStyle = deepWaterBackground(ctx, height);
     ctx.fillRect(0, 0, width, height);
 
-    // Calculate light speed for behavioral response
-    const lightSpeed = Math.sqrt(
-      (cursor.x - (cursor.x - (deltaTime * 0.1))) ** 2 +
-      (cursor.y - (cursor.y - (deltaTime * 0.1))) ** 2
+    // ============================================
+    // SEEKERS (PRIMARY SCENE CONTENT)
+    // ============================================
+
+    // Calculate cursor movement speed for flee behavior
+    const cursorSpeed = Math.sqrt(
+      (cursor.x - this.lastCursorX) ** 2 + (cursor.y - this.lastCursorY) ** 2
     );
 
-    // Update seekers - attract to cursor, avoid edges, apply physics
-    for (const seeker of this.seekers) {
-      // Attraction to light (cursor)
-      const dx = cursor.x - seeker.x;
-      const dy = cursor.y - seeker.y;
-      const distToLight = Math.sqrt(dx * dx + dy * dy);
-
-      if (cursor.isOver && distToLight < 300) {
-        // Attracted to light
-        const angle = Math.atan2(dy, dx);
-        const attractForce = Math.max(0, 1 - distToLight / 300) * 0.15;
-        seeker.vx += Math.cos(angle) * attractForce;
-        seeker.vy += Math.sin(angle) * attractForce;
-      } else {
-        // Random drift when not attracted
-        seeker.vx += (Math.random() - 0.5) * 0.05;
-        seeker.vy += (Math.random() - 0.5) * 0.05;
-      }
-
-      // Center drift - prevent edge clustering
-      const centerDx = width / 2 - seeker.x;
-      const centerDy = height / 2 - seeker.y;
-      const distToCenter = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
-
-      if (distToCenter > 200) {
-        const centerAngle = Math.atan2(centerDy, centerDx);
-        const centerForce = Math.max(0, (distToCenter - 200) / 200) * 0.02;
-        seeker.vx += Math.cos(centerAngle) * centerForce;
-        seeker.vy += Math.sin(centerAngle) * centerForce;
-      }
-
-      // Apply velocity
-      seeker.x += seeker.vx;
-      seeker.y += seeker.vy;
-
-      // Friction
-      seeker.vx *= 0.98;
-      seeker.vy *= 0.98;
-
-      // Boundary wrapping with smooth edges
-      if (seeker.x < -10) seeker.x = width + 10;
-      if (seeker.x > width + 10) seeker.x = -10;
-      if (seeker.y < -10) seeker.y = height + 10;
-      if (seeker.y > height + 10) seeker.y = -10;
-    }
-
-    // Draw seekers with glow
-    // Sort by depth (y position)
-    const sortedSeekers = [...this.seekers].sort((a, b) => a.y - b.y);
-
-    for (const seeker of sortedSeekers) {
-      const dx = cursor.x - seeker.x;
-      const dy = cursor.y - seeker.y;
-      const distToLight = Math.sqrt(dx * dx + dy * dy);
-
-      // Brightness based on proximity to light
-      let brightness = seeker.brightness;
-      if (cursor.isOver && distToLight < 300) {
-        brightness = 0.6 + Math.max(0, 1 - distToLight / 300) * 0.4;
-      }
-
-      // Glow halo
-      const glowRadius = seeker.size * 3;
-      const glowGrad = ctx.createRadialGradient(
-        seeker.x, seeker.y, 0,
-        seeker.x, seeker.y, glowRadius
-      );
-      glowGrad.addColorStop(0, `hsla(${seeker.bodyHue}, 100%, 60%, ${brightness * 0.6})`);
-      glowGrad.addColorStop(0.5, `hsla(${seeker.bodyHue}, 100%, 50%, ${brightness * 0.2})`);
-      glowGrad.addColorStop(1, 'transparent');
-
-      ctx.fillStyle = glowGrad;
-      ctx.beginPath();
-      ctx.arc(seeker.x, seeker.y, glowRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Body
-      ctx.fillStyle = `hsla(${seeker.bodyHue}, 100%, 50%, ${brightness})`;
-      ctx.beginPath();
-      ctx.arc(seeker.x, seeker.y, seeker.size, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Bright core
-      ctx.fillStyle = `hsla(${seeker.bodyHue}, 100%, 70%, ${brightness * 0.8})`;
-      ctx.beginPath();
-      ctx.arc(seeker.x, seeker.y, seeker.size * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Marine snow particles
-    for (const p of this.particles) {
-      p.y += p.speed;
-      p.x += Math.sin(this.time * 0.001 + p.y * 5) * 0.0003;
-
-      if (p.y > 1.05) {
-        p.y = -0.05;
-        p.x = Math.random();
-      }
-
-      ctx.fillStyle = `rgba(150, 180, 200, ${p.alpha})`;
-      ctx.beginPath();
-      ctx.arc(p.x * width, p.y * height, p.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // ROV spotlight effect - dimmer to let seekers shine
-    if (cursor.isOver && cursor.x > 0 && cursor.x < width) {
-      for (let i = 3; i >= 1; i--) {
-        const layerRadius = 100 * (i / 2);
-        const alpha = 0.08 / i;
-        const grad = ctx.createRadialGradient(
-          cursor.x, cursor.y, 0,
-          cursor.x, cursor.y, layerRadius
-        );
-        grad.addColorStop(0, `rgba(180, 220, 255, ${alpha})`);
-        grad.addColorStop(0.5, `rgba(100, 180, 220, ${alpha * 0.5})`);
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(cursor.x, cursor.y, layerRadius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Small bright core
-      const core = ctx.createRadialGradient(
-        cursor.x, cursor.y, 0,
-        cursor.x, cursor.y, 10
-      );
-      core.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
-      core.addColorStop(0.5, 'rgba(200, 240, 255, 0.3)');
-      core.addColorStop(1, 'transparent');
-      ctx.fillStyle = core;
-      ctx.beginPath();
-      ctx.arc(cursor.x, cursor.y, 10, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Soft vignette
-    const vignette = ctx.createRadialGradient(
-      width / 2, height / 2, height * 0.3,
-      width / 2, height / 2, height * 0.85
+    // Update seeker behavior using shared effect
+    updateSeekerSwarm(
+      this.seekers,
+      cursor.x,
+      cursor.y,
+      cursorSpeed,
+      width,
+      height,
+      0.02 // centerDrift
     );
-    vignette.addColorStop(0, 'transparent');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
-    ctx.fillStyle = vignette;
+
+    // Draw seeker swarm using shared effect
+    drawSeekerSwarm(ctx, this.seekers, {
+      lightX: cursor.x,
+      lightY: cursor.y,
+      lightRadius: 200,
+      time: this.time,
+    });
+
+    // ============================================
+    // SHARED EFFECTS
+    // ============================================
+
+    // Player light (ROV spotlight) using shared effect
+    if (cursor.isOver) {
+      drawPlayerLight(ctx, cursor.x, cursor.y, 200);
+    }
+
+    // Marine snow particles using shared effects
+    updateMarineSnow(this.particles, 'down');
+    drawMarineSnow(ctx, this.particles, width, height);
+
+    // Vignette (darkens edges) using shared effect
+    ctx.fillStyle = vignette(ctx, width / 2, height / 2, height * 0.25, height * 0.85, 0.4);
     ctx.fillRect(0, 0, width, height);
 
-    this.time += 16;
+    // ============================================
+    // STATE UPDATES
+    // ============================================
+
+    // Track cursor movement for flee behavior
+    this.lastCursorX = cursor.x;
+    this.lastCursorY = cursor.y;
+
+    // Update time for animations
+    this.time += deltaTime;
+  }
+
+  /**
+   * Cleanup - called when scene is destroyed
+   */
+  protected onCleanup(): void {
+    // Clear all arrays
+    this.seekers = [];
+    this.particles = [];
   }
 }
 
+// Export instance for convenience
 export const seekers = new SeekersScene();

@@ -129,8 +129,9 @@ export class WallScene extends BaseCanvasScene {
   }
 
   render(ctx: CanvasRenderingContext2D, deltaTime: number): void {
-    const w = this.canvas!.width / window.devicePixelRatio;
-    const h = this.canvas!.height / window.devicePixelRatio;
+    const { width, height } = this.getCanvasSize();
+    const w = width;
+    const h = height;
 
     // Get cursor position from CursorManager if available
     const cursor = this.cursorManager ? this.cursorManager.getPosition() : { x: -1000, y: -1000 };

@@ -119,6 +119,9 @@ export interface Seeker {
 
 /**
  * Create a seeker - a small creature drawn to light
+ *
+ * @deprecated Use SeekersScene instead. Pattern A helpers are being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
  */
 export function createSeeker(canvasWidth: number, canvasHeight: number): Seeker {
   return {
@@ -219,7 +222,10 @@ export interface SwarmOptions {
 
 /**
  * Create a swarm of seekers with configurable spawn distribution.
- * 
+ *
+ * @deprecated Use SeekersScene instead. Pattern A helpers are being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
+ *
  * @example
  * // Center-biased swarm that won't cluster at edges
  * const seekers = createSeekerSwarm(40, canvas.width, canvas.height, {
@@ -327,6 +333,9 @@ export function updateSeekerWithDrift(
 
 /**
  * Update all seekers in a swarm
+ *
+ * @deprecated Use SeekersScene instead. Pattern A helpers are being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
  */
 export function updateSeekerSwarm(
   seekers: Seeker[],
@@ -418,7 +427,10 @@ export function drawSeeker(
 
 /**
  * Draw a swarm of seekers with proper layering (dim behind, bright front)
- * 
+ *
+ * @deprecated Use SeekersScene instead. Pattern A helpers are being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
+ *
  * @example
  * drawSeekerSwarm(ctx, seekers, {
  *   lightX: mouseX,

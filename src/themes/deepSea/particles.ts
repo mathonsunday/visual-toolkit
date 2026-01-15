@@ -27,6 +27,9 @@ export interface Particle {
 /**
  * Create marine snow particles (organic debris floating in water)
  * These drift slowly downward relative to camera
+ *
+ * @deprecated Still supported, but recommended to use via effects.ts in Scene-First architecture.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
  */
 export function createMarineSnow(count = 80): Particle[] {
   return Array.from({ length: count }, () => ({

@@ -37,7 +37,10 @@ export interface ROVOptions {
 
 /**
  * Draw a complete ROV (underwater vehicle)
- * 
+ *
+ * @deprecated Use Scene-First architecture. Pattern B recipes being phased out in v3.0.
+ * See: docs/SCENE_FIRST_ARCHITECTURE.md
+ *
  * @example
  * drawROV(ctx, canvas.width / 2, canvas.height / 2, 1.2, {
  *   lightsOn: true,
