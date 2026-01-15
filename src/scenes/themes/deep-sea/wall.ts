@@ -93,6 +93,9 @@ export class WallScene extends BaseCanvasScene {
   private perm: number[] = [];
 
   protected async onInit(): Promise<void> {
+    // Enable cursor tracking for light following
+    this.startCursorTracking();
+
     // Initialize permutation array for simplex noise
     this.perm = this.createPerm(42);
 
@@ -126,6 +129,9 @@ export class WallScene extends BaseCanvasScene {
   protected onCanvasResize(): void {
     // Reset mottled base on resize so it's regenerated with new dimensions
     this.mottledBase = null;
+
+    // Update cursor center position for eye tracking
+    this.cursorManager?.updateCenter();
   }
 
   render(ctx: CanvasRenderingContext2D, deltaTime: number): void {
@@ -135,6 +141,7 @@ export class WallScene extends BaseCanvasScene {
 
     // Get cursor position from CursorManager if available
     const cursor = this.cursorManager ? this.cursorManager.getPosition() : { x: -1000, y: -1000 };
+
     const light = {
       x: cursor.x >= 0 && cursor.x <= w ? cursor.x : -1000,
       y: cursor.y >= 0 && cursor.y <= h ? cursor.y : -1000,

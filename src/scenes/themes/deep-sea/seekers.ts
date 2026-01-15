@@ -22,16 +22,22 @@ import type { SceneConfig } from '../../types';
 import {
   deepWaterBackground,
   drawPlayerLight,
-  createMarineSnow,
-  updateMarineSnow,
-  drawMarineSnow,
   vignette,
   createSeekerSwarm,
   updateSeekerSwarm,
   drawSeekerSwarm,
-  type Particle,
   type Seeker,
 } from '../../../themes/deepSea/effects.js';
+
+// Local particle type for marine snow (not using shared Particle type)
+interface MarineSnowParticle {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  alpha: number;
+  phase?: number;
+}
 
 export class SeekersScene extends BaseCanvasScene {
   name = 'Seekers';
@@ -48,7 +54,7 @@ export class SeekersScene extends BaseCanvasScene {
   // ============================================
 
   private seekers: Seeker[] = [];
-  private particles: Particle[] = [];
+  private particles: MarineSnowParticle[] = [];
   private time = 0;
   private lastCursorX = 0;
   private lastCursorY = 0;
@@ -77,7 +83,17 @@ export class SeekersScene extends BaseCanvasScene {
     });
 
     // Create marine snow particles using shared effect
-    this.particles = createMarineSnow(10);
+    // Note: Need to create custom slow particles instead of fast ones
+    // The shared createMarineSnow() creates particles that are too fast
+    // We need 30 slow particles like the original implementation
+    this.particles = Array.from({ length: 30 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      size: 0.5 + Math.random() * 1.5,
+      speed: 0.0005 + Math.random() * 0.001,      // Much slower than shared default
+      alpha: 0.1 + Math.random() * 0.2,
+      phase: Math.random() * Math.PI * 2,
+    }));
 
     this.lastCursorX = width / 2;
     this.lastCursorY = height / 2;
@@ -135,9 +151,27 @@ export class SeekersScene extends BaseCanvasScene {
       drawPlayerLight(ctx, cursor.x, cursor.y, 200);
     }
 
-    // Marine snow particles using shared effects
-    updateMarineSnow(this.particles, 'down');
-    drawMarineSnow(ctx, this.particles, width, height);
+    // Marine snow particles with custom slow drift (not using shared updateMarineSnow)
+    // The shared version moves particles too fast - we need slow, graceful drift
+    for (const p of this.particles) {
+      p.y += p.speed;
+      // Add horizontal wobble based on time and particle position
+      p.x += Math.sin(this.time * 0.001 + (p.phase ?? 0) + p.y * 5) * 0.0003;
+
+      // Wrap particles
+      if (p.y > 1.05) {
+        p.y = -0.05;
+        p.x = Math.random();
+      }
+      if (p.x < -0.05) p.x = 1.05;
+      if (p.x > 1.05) p.x = -0.05;
+
+      // Draw particle
+      ctx.fillStyle = `rgba(150, 180, 200, ${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x * width, p.y * height, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Vignette (darkens edges) using shared effect
     ctx.fillStyle = vignette(ctx, width / 2, height / 2, height * 0.25, height * 0.85, 0.4);

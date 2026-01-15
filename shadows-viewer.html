@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadows Scene Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #0a0f2e;
+      color: #ccc;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 20px;
+      border-bottom: 1px solid #1a2a4e;
+      background: #050810;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .viewer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #010508;
+      border: 1px solid #1a2a4e;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      flex: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .controls {
+      width: 250px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      background: #0a0f2e;
+      padding: 15px;
+      border: 1px solid #1a2a4e;
+      border-radius: 8px;
+      overflow-y: auto;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .control-group input {
+      padding: 6px;
+      background: #050810;
+      border: 1px solid #1a2a4e;
+      color: #aaa;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .control-group input:focus {
+      outline: none;
+      border-color: #3a5a8e;
+      color: #fff;
+    }
+
+    .info {
+      font-size: 11px;
+      color: #666;
+      line-height: 1.6;
+      background: #050810;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 2px solid #3a5a8e;
+    }
+
+    button {
+      padding: 8px 12px;
+      background: #1a3a6e;
+      border: 1px solid #3a5a8e;
+      color: #aaa;
+      font-family: monospace;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #2a4a8e;
+      color: #fff;
+      border-color: #5a7aae;
+    }
+
+    .status {
+      font-size: 12px;
+      padding: 10px;
+      background: #050810;
+      border: 1px solid #1a2a4e;
+      border-radius: 4px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Shadows Scene - Live Viewer</h1>
+    <p>Move your cursor over the canvas to see the light interaction</p>
+  </div>
+
+  <div class="container">
+    <div class="viewer">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Scene Status</label>
+        <div class="status" id="status">Loading...</div>
+      </div>
+
+      <div class="control-group">
+        <label>Intensity</label>
+        <input type="range" id="intensity" min="0" max="1" step="0.1" value="0.5">
+        <span id="intensityValue">0.5</span>
+      </div>
+
+      <div class="info">
+        <strong>About Shadows:</strong><br><br>
+        Jellyfish-like creatures drifting in deep water. Features:
+        <ul style="margin-left: 12px; margin-top: 8px;">
+          <li>4-7 jellyfish creatures</li>
+          <li>Gentle drifting physics</li>
+          <li>Pulsing bell animation</li>
+          <li>Tentacle wave effects</li>
+          <li>Marine snow particles</li>
+          <li>Cursor-following light glow</li>
+          <li>Vignette darkening</li>
+        </ul>
+      </div>
+
+      <button onclick="resetScene()">Reset Scene</button>
+      <button onclick="takeScreenshot()">Take Screenshot</button>
+    </div>
+  </div>
+
+  <script src="dist/visual-toolkit.min.js"></script>
+  <script>
+    let scene = null;
+    let isRunning = false;
+
+    async function initScene() {
+      const canvas = document.getElementById('canvas');
+      const status = document.getElementById('status');
+
+      try {
+        status.textContent = 'Initializing...';
+
+        // Get the Shadows scene from visual toolkit
+        scene = window.VisualToolkit.scenes.deepSea.shadows;
+
+        if (!scene) {
+          throw new Error('Shadows scene not found in visual-toolkit');
+        }
+
+        // Initialize the scene
+        await scene.init(canvas, {
+          intensity: 0.8,
+          duration: Infinity
+        });
+
+        status.textContent = '✓ Running - Move cursor over canvas';
+        isRunning = true;
+
+        // Start the animation loop
+        let lastTime = performance.now();
+        function animate(currentTime) {
+          if (isRunning) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Scene renders internally via animation loop
+            requestAnimationFrame(animate);
+          }
+        }
+        requestAnimationFrame(animate);
+
+      } catch (error) {
+        console.error('Failed to initialize scene:', error);
+        status.textContent = '✗ Error: ' + error.message;
+      }
+    }
+
+    function resetScene() {
+      if (scene && scene.cleanup) {
+        scene.cleanup();
+      }
+      isRunning = false;
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#010508';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      setTimeout(() => {
+        initScene();
+      }, 100);
+    }
+
+    function takeScreenshot() {
+      const canvas = document.getElementById('canvas');
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `shadows-screenshot-${Date.now()}.png`;
+      link.click();
+    }
+
+    // Intensity control
+    document.getElementById('intensity').addEventListener('change', (e) => {
+      document.getElementById('intensityValue').textContent = e.target.value;
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      const canvas = document.getElementById('canvas');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    });
+
+    // Initialize on load
+    window.addEventListener('load', () => {
+      const canvas = document.getElementById('canvas');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      initScene();
+    });
+  </script>
+</body>
+</html>

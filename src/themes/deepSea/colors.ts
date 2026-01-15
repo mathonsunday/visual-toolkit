@@ -10,12 +10,14 @@
 
 export const deepSea = {
   // Background layers - darkest at bottom
+  // These colors are extracted from the original Seekers/Wall scene implementations
+  // and provide the characteristic deep-sea darkness gradient
   background: {
-    surface: '#020810',
-    mid: '#051018', 
-    deep: '#020a12',
-    abyss: '#010508',
-    void: '#000000',
+    surface: '#020810',   // Very dark blue-black (top of water column)
+    mid: '#010508',       // Slightly darker (middle depth)
+    deep: '#000305',      // Nearly black with blue tint (deep water)
+    abyss: '#000000',     // Pure black (abyssal plain)
+    void: '#000000',      // True void/empty space
   },
   
   // Water itself

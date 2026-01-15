@@ -15,26 +15,23 @@
  */
 
 import { ShadowsScene } from './shadows';
-import { GiantSquidScene } from './giant-squid';
 import { ROVExteriorScene } from './rov-exterior';
-import { LeviathanScene } from './leviathan';
 import { WallScene } from './wall';
+import { SeekersScene } from './seekers';
 
 // Export scene instances
 export const shadows = new ShadowsScene();
-export const giantSquid = new GiantSquidScene();
 export const rovExterior = new ROVExteriorScene();
-export const leviathan = new LeviathanScene();
 export const wall = new WallScene();
+export const seekers = new SeekersScene();
 
 // Export all scenes as a collection
 export const deepSea = {
   shadows,
-  giantSquid,
   rovExterior,
-  leviathan,
   wall,
+  seekers,
 };
 
 // Export types
-export type { ShadowsScene, GiantSquidScene, ROVExteriorScene, LeviathanScene, WallScene };
+export type { ShadowsScene, ROVExteriorScene, WallScene, SeekersScene };
