@@ -14,7 +14,12 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "test:ci": "vitest run --reporter=verbose --coverage"
+    "test:ci": "vitest run --reporter=verbose --coverage",
+    "prepare": "husky",
+    "prerelease": "npm run build && npm run test",
+    "release:patch": "npm version patch && npm publish && git push && git push --tags",
+    "release:minor": "npm version minor && npm publish && git push && git push --tags",
+    "release:major": "npm version major && npm publish && git push && git push --tags"
   },
   "keywords": [
     "canvas",
@@ -31,7 +36,7 @@
     "@types/jsdom": "^27.0.0",
     "@vitest/coverage-v8": "^4.0.17",
     "happy-dom": "^20.1.0",
-    "husky": "^9.0.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "lint-staged": "^15.0.0",
     "typescript": "^5.0.0",
